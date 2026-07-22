@@ -18,15 +18,17 @@ it('registers the passwordless-ui-livewire publish group mapping the login stub 
         ->toBeTrue('example route is not mapped to routes/passwordless-ui.php');
 });
 
-it('registers the flux publish group mapping the Volt component and example route', function () {
-    $paths = ServiceProvider::pathsToPublish(PasswordlessServiceProvider::class, 'passwordless-ui-flux');
+it('registers the livewire-embed publish group mapping the kit page, controller and routes', function () {
+    $paths = ServiceProvider::pathsToPublish(PasswordlessServiceProvider::class, 'passwordless-ui-livewire-embed');
     $targets = array_values($paths);
 
     expect($paths)->not->toBeEmpty();
-    expect(collect($targets)->contains(fn ($t) => str_ends_with($t, 'views/livewire/passwordless/login.blade.php')))
-        ->toBeTrue('flux Volt component is not mapped to resources/views/livewire/passwordless/login.blade.php');
+    expect(collect($targets)->contains(fn ($t) => str_ends_with($t, 'views/pages/auth/passwordless.blade.php')))
+        ->toBeTrue('embed page is not mapped to resources/views/pages/auth/passwordless.blade.php');
+    expect(collect($targets)->contains(fn ($t) => str_ends_with($t, 'Http/Controllers/Auth/PasswordlessLoginController.php')))
+        ->toBeTrue('embed controller is not mapped');
     expect(collect($targets)->contains(fn ($t) => str_ends_with($t, 'routes/passwordless-ui.php')))
-        ->toBeTrue('flux example route is not mapped');
+        ->toBeTrue('embed routes are not mapped');
 });
 
 it('registers the react publish group mapping the Inertia page and example route', function () {
@@ -52,7 +54,7 @@ it('registers the vue publish group mapping the Inertia page and example route',
 });
 
 it('ships every declared stub source on disk', function () {
-    foreach (['passwordless-ui-livewire', 'passwordless-ui-flux', 'passwordless-ui-react', 'passwordless-ui-vue'] as $tag) {
+    foreach (['passwordless-ui-livewire', 'passwordless-ui-livewire-embed', 'passwordless-ui-react', 'passwordless-ui-vue'] as $tag) {
         $paths = ServiceProvider::pathsToPublish(PasswordlessServiceProvider::class, $tag);
 
         foreach (array_keys($paths) as $source) {

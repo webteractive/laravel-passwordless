@@ -48,11 +48,14 @@ class PasswordlessServiceProvider extends PackageServiceProvider
                 "{$uiStubs}/livewire/routes.php" => base_path('routes/passwordless-ui.php'),
             ], 'passwordless-ui-livewire');
 
-            // Faithful Livewire starter-kit flavor: server-side Volt component + Flux UI.
+            // Integrated with the Livewire starter kit: Blade + Flux page copying
+            // the kit's own auth conventions (<x-layouts::auth>, Fortify-style
+            // controller, classic form POST -> redirect).
             $this->publishes([
-                "{$uiStubs}/flux/login.blade.php" => resource_path('views/livewire/passwordless/login.blade.php'),
-                "{$uiStubs}/flux/routes.php" => base_path('routes/passwordless-ui.php'),
-            ], 'passwordless-ui-flux');
+                "{$uiStubs}/livewire-embed/passwordless.blade.php" => resource_path('views/pages/auth/passwordless.blade.php'),
+                "{$uiStubs}/livewire-embed/PasswordlessLoginController.php" => app_path('Http/Controllers/Auth/PasswordlessLoginController.php'),
+                "{$uiStubs}/livewire-embed/routes.php" => base_path('routes/passwordless-ui.php'),
+            ], 'passwordless-ui-livewire-embed');
 
             $this->publishes([
                 "{$uiStubs}/react/Login.tsx" => resource_path('js/pages/passwordless/login.tsx'),

@@ -70,23 +70,27 @@ The core is strictly headless — no routes or views render by default. If you w
 login page, publish a stub matched to your Laravel starter kit. The stub becomes **your** file;
 it talks to the JSON endpoints above via `fetch`, so the headless core stays untouched.
 
+Pick by your situation. **Standalone** stubs are self-contained pages (own layout + `@vite`) for
+apps with no auth yet; they submit to the JSON endpoints with `fetch`:
+
 ```bash
 php artisan vendor:publish --tag=passwordless-ui-livewire   # Blade + Alpine (no extra deps)
-php artisan vendor:publish --tag=passwordless-ui-flux       # Livewire Volt + Flux UI
 php artisan vendor:publish --tag=passwordless-ui-react      # Inertia + React + TypeScript
 php artisan vendor:publish --tag=passwordless-ui-vue        # Inertia + Vue + TypeScript
 ```
 
-Each publishes a login page plus a commented `routes/passwordless-ui.php` example route (the
-package registers no page route itself — you wire it). The page is a two-step **email → 6-digit
-code** flow with paste-to-fill and auto-submit, an optional "email me a magic link instead"
-affordance, dark mode, and reduced-motion support. Affordances follow your enabled strategies in
-`config/passwordless.php`. Styling is neutral Tailwind v4 — restyle by editing the published file.
+**Integrated** (`-embed`) stubs match an existing official starter kit — same auth layout,
+components, and server-side redirect flow, driven through the package's PHP API (no `fetch`):
 
-The `livewire`, `react`, and `vue` stubs submit to the JSON endpoints with `fetch`. The `flux`
-stub is different: it's a server-side **Volt** component (requires `livewire/volt` + `livewire/flux`)
-that drives the flow through the package's public API (`Passwordless::loginCode()` / `magicLink()`),
-so it needs no client-side calls — the closest match to the Livewire starter kit.
+```bash
+php artisan vendor:publish --tag=passwordless-ui-livewire-embed   # Livewire kit: Blade + Flux, <x-layouts::auth>, Fortify-style controller
+```
+
+Each publishes a login page (+ a commented `routes/passwordless-ui.php`; the package registers no
+page route — you wire it). The flow is two-step **email → code** with an optional "email me a magic
+link" affordance, gated by your enabled strategies in `config/passwordless.php`. Standalone stubs
+are neutral Tailwind — restyle by editing the file; integrated stubs inherit the kit's look. The
+`-embed` routes are named `passwordless.*` so they coexist with the kit's own `login`.
 
 ## Security defaults (always-on)
 

@@ -51,7 +51,7 @@ These are PRD decisions made during planning. Do not relitigate without explicit
 - `src/Testing/PasswordlessFake.php` and the per-strategy fakes — used by `Passwordless::fake()`.
 - `routes/web.php` — all routes registered unconditionally; per-strategy gating belongs inside controllers.
 - `config/passwordless.php` — full option surface.
-- `stubs/ui/{livewire,flux,react,vue}/` — opt-in UI kit sources (NOT autoloaded). Registered as `vendor:publish` tags `passwordless-ui-{livewire,flux,react,vue}` in `PasswordlessServiceProvider::packageBooted()`. Nothing routed by default. `livewire`/`react`/`vue` are fetch-based (consume the JSON endpoints); `flux` is a server-side Volt+Flux component that calls the package's public API directly.
+- `stubs/ui/{livewire,react,vue,livewire-embed}/` — opt-in UI kit sources (NOT autoloaded). Registered as `vendor:publish` tags in `PasswordlessServiceProvider::packageBooted()`. Nothing routed by default. Two modes: **standalone** (`passwordless-ui-{livewire,react,vue}`) = self-contained pages, own layout, `fetch` → JSON endpoints (greenfield); **integrated** (`passwordless-ui-{stack}-embed`) = copies an official starter kit's auth layout/conventions and drives the flow server-side via the package's PHP API (e.g. `livewire-embed` = Blade + Flux + `<x-layouts::auth>` + Fortify-style controller). Proven end-to-end against the real Livewire kit.
 
 ## Commands
 
