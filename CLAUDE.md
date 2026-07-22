@@ -4,70 +4,70 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Status
 
-Pre-code. The repo currently contains only `PRD.md` and this file. No `composer.json`, no source, no tests. Read `PRD.md` first — it is the source of truth for scope, schema, API surface, security model, and explicit non-goals.
+`v0.1.0` scaffolded — magic link + login code complete. Passkeys were removed (Laravel Fortify provides first-party WebAuthn). Read `PRD.md` for scope and `docs/superpowers/specs/2026-07-22-passwordless-ui-kit-design.md` + `docs/superpowers/plans/2026-07-22-passwordless-ui-kit.md` for the current work (passkey removal + opt-in UI kit).
 
 ## What this is
 
-A Laravel package (target namespace TBD, likely `webteractive/laravel-passwordless`) providing three passwordless authentication strategies for Laravel 11 / 12 / 13 apps:
+A Laravel package providing two passwordless authentication strategies for Laravel 11 / 12 / 13 apps:
 
-1. **Magic link** — signed, single-use, time-limited URL emailed to the user.
-2. **Login code** — short numeric OTP emailed to the user. Channel is a contract; email is the only built-in driver.
-3. **Passkeys (WebAuthn)** — experimental.
+1. **Magic link** — signed, single-use, time-limited URL emailed to the user. Production-ready.
+2. **Login code** — short numeric OTP emailed to the user. Channel is a contract; email is the only built-in driver. Production-ready.
 
 ## Architectural ground rules (load-bearing)
 
 These are PRD decisions made during planning. Do not relitigate without explicit user direction.
 
-- **Backend only.** No frontend scaffolds, starter kits, Blade views, Livewire, or JS. Strictly headless. The package exposes routes, controllers, contracts, events, notifications, lang files — nothing else.
-- **Two tables, not one and not four.**
-  - `passwordless_challenges` — ephemeral rows for magic link tokens, login codes, and passkey ceremony challenges. Cleaned up after consumption or expiry.
-  - `passwordless_credentials` — persistent passkey credentials.
-  - Do not pollute the `users` table.
-- **User must already exist by default.** Lookup is by email column on the configured user model. Unknown emails fail. Auto-creation is opt-in via `auto_create_users` config (default `false`).
-- **Per-strategy enable/disable** via `config/passwordless.php`. Apps pick what they want.
-- **Guard integration** uses Laravel's session guard out of the box. API mode (Sanctum token return) is a config flag; no Sanctum/Passport scaffolding is bundled.
-- **Passkeys are experimental** until proven across all three supported Laravel versions.
+- **Backend only.** No frontend scaffolds, starter kits, Blade views, Livewire, or JS. Strictly headless.
+- **One table.**
+  - `passwordless_challenges` — ephemeral rows for magic link tokens and login codes (`type` ∈ {`link`, `code`}). Cleaned up by `passwordless:prune`.
+- **User must already exist by default.** `auto_create_users` config is opt-in.
+- **Per-strategy enable/disable** via config flags (read at request time inside controllers, not at route registration).
+- **Guard integration** uses Laravel's session guard out of the box; `api_mode` returns Sanctum-style `{ token, user }` instead.
 
-## Hard non-goals (do not add without user direction)
+## Hard non-goals
 
-- Recovery codes — antithetical to passwordless.
-- Built-in SMS for login code — channel is a contract; apps add SMS by implementing it.
-- Built-in audit log table — events cover this; apps that want persistence listen and write to their own table.
-- Frontend anything.
+- Recovery codes, built-in SMS, built-in audit log table, passkeys/WebAuthn (use Fortify).
+- Frontend anything **in the core** — but an **opt-in, publish-only UI kit** is a sanctioned exception (see the spec/plan under `docs/superpowers/`). The headless core stays untouched; UI ships as `vendor:publish` stubs per starter-kit stack.
 
-## Security defaults that shape the design
+## Security defaults
 
-When implementing, these are not optional toggles to skip — they are the package's reputation:
+- Email enumeration protection — request endpoints return identical responses regardless of email existence.
+- Same-browser enforcement for magic links via signed cookie (default on).
+- Resend cooldown distinct from rate limit (default 30s).
+- Per-strategy lockout after N failed verifies (default 5 / 15 min).
+- Tokens/codes hashed at rest (SHA-256), single-use, TTL-bound.
 
-- **Email enumeration protection** — request endpoints return identical responses for known and unknown emails. Default on.
-- **Same-browser enforcement for magic links** — challenge bound to a signed cookie set on request. Default on, configurable.
-- **Resend cooldown** distinct from rate limit (default 30s).
-- **Per-strategy lockout** after N failed verifies (default 5 / 15min).
-- **Sign-count regression** on passkey auth → fire `PasskeyCloneDetected`, force re-registration, reject auth.
-- **Tokens/codes hashed at rest, single-use, TTL-bound.**
+## Code map
 
-## Extension surface (don't reinvent)
+- `src/Passwordless.php` — manager (`magicLink/loginCode/gateUsing/recordUsing/fake`).
+- `src/Strategies/{MagicLink,LoginCode}/` — default strategy implementations + per-strategy exceptions.
+- `src/Http/Controllers/{MagicLink,LoginCode}/` — invokable controllers.
+- `src/Http/Middleware/PasswordlessThrottle.php` — request/verify burst throttle.
+- `src/Support/` — `Decision`, `AuthEvent`, `TokenHasher`, `EnumerationGuard`, `ResendCooldown`, `Lockout`, `BrowserCookie`, `UserResolver`.
+- `src/Channels/MailLoginCodeChannel.php` — built-in login-code channel; new channels register at `passwordless.login_code_channels.{name}`.
+- `src/Models/Challenge.php` — Eloquent model with scopes/casts.
+- `src/Events/` — full lifecycle events (`MagicLinkRequested/Consumed`, `LoginCodeRequested/Verified/Failed`, `AuthenticationDenied`, `UserAuthenticated`).
+- `src/Notifications/{MagicLink,LoginCode}Notification.php` — markdown mail.
+- `src/Testing/PasswordlessFake.php` and the per-strategy fakes — used by `Passwordless::fake()`.
+- `routes/web.php` — all routes registered unconditionally; per-strategy gating belongs inside controllers.
+- `config/passwordless.php` — full option surface.
+- `stubs/ui/{livewire,flux,react,vue}/` — opt-in UI kit sources (NOT autoloaded). Registered as `vendor:publish` tags `passwordless-ui-{livewire,flux,react,vue}` in `PasswordlessServiceProvider::packageBooted()`. Nothing routed by default. `livewire`/`react`/`vue` are fetch-based (consume the JSON endpoints); `flux` is a server-side Volt+Flux component that calls the package's public API directly.
 
-The PRD already defines these hooks — wire features through them rather than adding new ones:
+## Commands
 
-- `Passwordless::gateUsing(closure)` — pre-auth allow/deny gate.
-- `Passwordless::recordUsing(closure)` — single observability funnel for custom audit writers.
+- `composer test` — Pest suite (sqlite in-memory).
+- `composer analyse` — Larastan.
+- `composer format` — Pint.
+- `php artisan passwordless:prune` — schedule hourly.
+
+## Tests
+
+Pest under `tests/`. Workbench user model at `workbench/app/Models/User.php`. The TestCase boots the package provider and runs every `database/migrations/*.php.stub` plus `tests/database/migrations/*.php` — add new package migrations as `*.php.stub` files only.
+
+## Extension surface
+
+- `Passwordless::gateUsing(closure)` — pre-auth allow/deny.
+- `Passwordless::recordUsing(closure)` — single observability funnel.
 - `Passwordless::fake()` — test helper.
-- Login-code `channel` driver contract — for SMS / WhatsApp / etc.
-- Strategy contracts — apps can swap implementations.
-
-## Open decisions
-
-Tracked at the bottom of `PRD.md`. Resolve with the user before scaffolding code that depends on them:
-
-- Passkey library choice (`web-auth/webauthn-lib` vs `asbiin/laravel-webauthn` vs thin wrapper).
-
-## When code exists
-
-Update this section once `composer.json`, source, and tests land:
-
-- Test command (Pest, in-memory SQLite per the PRD).
-- Lint/format command (Pint expected).
-- How to run a single test.
-- Service provider entry point and how strategies/contracts/drivers are wired.
-- `php artisan passwordless:prune` (challenge cleanup) and `passwordless:passkeys` (CLI passkey management) commands.
+- `LoginCodeChannel` contract for SMS/WhatsApp/etc.
+- Per-strategy contract bindings — swap implementations via the container.

@@ -5,6 +5,7 @@ namespace Webteractive\Passwordless\Tests;
 use Illuminate\Database\Eloquent\Factories\Factory;
 use Orchestra\Testbench\TestCase as Orchestra;
 use Webteractive\Passwordless\PasswordlessServiceProvider;
+use Workbench\App\Models\User;
 
 class TestCase extends Orchestra
 {
@@ -27,11 +28,17 @@ class TestCase extends Orchestra
     public function getEnvironmentSetUp($app)
     {
         config()->set('database.default', 'testing');
+        config()->set('passwordless.user_model', User::class);
+        config()->set('app.key', 'base64:'.base64_encode(random_bytes(32)));
+        config()->set('cache.default', 'array');
+    }
 
-        /*
-         foreach (\Illuminate\Support\Facades\File::allFiles(__DIR__ . '/../database/migrations') as $migration) {
-            (include $migration->getRealPath())->up();
-         }
-         */
+    protected function defineDatabaseMigrations()
+    {
+        $this->loadMigrationsFrom(__DIR__.'/database/migrations');
+
+        foreach (glob(__DIR__.'/../database/migrations/*.php.stub') as $stub) {
+            (require $stub)->up();
+        }
     }
 }

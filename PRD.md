@@ -2,6 +2,14 @@
 
 A Laravel package providing passwordless authentication strategies for Laravel apps.
 
+> **Descoped (2026-07): Passkeys / WebAuthn.** The passkey strategy was removed from the
+> package — Laravel Fortify now ships first-party WebAuthn/passkey support, making a redundant
+> implementation here unnecessary. All passkey-related sections below (strategy 3, the
+> `passwordless_credentials` table, `/auth/passkeys/*` routes, `Passkey*` events, the `passkeys`
+> config block, the `passwordless:passkeys` command) are **retained for historical context only**
+> and do not reflect the shipped package, which provides **magic link + login code** against a
+> single `passwordless_challenges` table.
+
 ## Goals
 - Drop-in passwordless auth for any Laravel app (11/12/13).
 - Multiple strategies, composable, opt-in per app.
@@ -15,6 +23,7 @@ A Laravel package providing passwordless authentication strategies for Laravel a
 - **Recovery codes.** Antithetical to passwordless. If apps need a backstop, that's their job.
 - **Built-in SMS for login code.** Not shipped. The login-code channel is an extensible contract — apps add SMS, WhatsApp, etc. by implementing it. Email is the only built-in driver.
 - **Built-in audit log table.** Events cover this. Apps that want persistent audit can listen and write to their own table.
+- **Passkeys / WebAuthn.** Descoped — use Laravel Fortify's first-party passkey support.
 
 ## Strategies
 
@@ -30,7 +39,7 @@ A Laravel package providing passwordless authentication strategies for Laravel a
 - Configurable: code length, TTL, max attempts, lockout, throttle.
 - Constant-time comparison; rate limit per email + per IP.
 
-### 3. Passkeys (WebAuthn) — experimental
+### 3. Passkeys (WebAuthn) — DESCOPED (removed; see banner at top; use Fortify)
 - Register and authenticate via WebAuthn / FIDO2.
 - Backed by `web-auth/webauthn-lib` (reference PHP impl, no Laravel opinions to fight).
 - Multiple credentials per user; nameable; revocable.
