@@ -54,7 +54,11 @@ it('registers the vue publish group mapping the Inertia page and example route',
 });
 
 it('ships every declared stub source on disk', function () {
-    foreach (['passwordless-ui-livewire', 'passwordless-ui-livewire-embed', 'passwordless-ui-react', 'passwordless-ui-vue'] as $tag) {
+    foreach ([
+        'passwordless-ui-livewire', 'passwordless-ui-livewire-embed',
+        'passwordless-ui-react', 'passwordless-ui-react-embed',
+        'passwordless-ui-vue', 'passwordless-ui-vue-embed',
+    ] as $tag) {
         $paths = ServiceProvider::pathsToPublish(PasswordlessServiceProvider::class, $tag);
 
         foreach (array_keys($paths) as $source) {

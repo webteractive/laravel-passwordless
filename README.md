@@ -84,7 +84,14 @@ components, and server-side redirect flow, driven through the package's PHP API 
 
 ```bash
 php artisan vendor:publish --tag=passwordless-ui-livewire-embed   # Livewire kit: Blade + Flux, <x-layouts::auth>, Fortify-style controller
+php artisan vendor:publish --tag=passwordless-ui-react-embed      # React kit: Inertia page under pages/auth/*, kit AuthLayout + ui components
+php artisan vendor:publish --tag=passwordless-ui-vue-embed        # Vue kit: Inertia page under pages/auth/*, kit AuthLayout + ui components
 ```
+
+Each `-embed` publishes a page + a Fortify-style `PasswordlessLoginController` (which drives the
+flow server-side through the package's PHP API) + `routes/passwordless-ui.php`. All three are
+verified end-to-end in a real starter kit (email → code → dashboard, coexisting with the kit's
+own login).
 
 Each publishes a login page (+ a commented `routes/passwordless-ui.php`; the package registers no
 page route — you wire it). The flow is two-step **email → code** with an optional "email me a magic

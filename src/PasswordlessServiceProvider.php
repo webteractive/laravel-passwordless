@@ -62,10 +62,26 @@ class PasswordlessServiceProvider extends PackageServiceProvider
                 "{$uiStubs}/react/routes.php" => base_path('routes/passwordless-ui.php'),
             ], 'passwordless-ui-react');
 
+            // Integrated with the React starter kit: Inertia page under pages/auth/*
+            // (auto-wrapped in the kit's AuthLayout) + Fortify-style controller.
+            $this->publishes([
+                "{$uiStubs}/react-embed/passwordless.tsx" => resource_path('js/pages/auth/passwordless.tsx'),
+                "{$uiStubs}/react-embed/PasswordlessLoginController.php" => app_path('Http/Controllers/Auth/PasswordlessLoginController.php'),
+                "{$uiStubs}/react-embed/routes.php" => base_path('routes/passwordless-ui.php'),
+            ], 'passwordless-ui-react-embed');
+
             $this->publishes([
                 "{$uiStubs}/vue/Login.vue" => resource_path('js/pages/passwordless/Login.vue'),
                 "{$uiStubs}/vue/routes.php" => base_path('routes/passwordless-ui.php'),
             ], 'passwordless-ui-vue');
+
+            // Integrated with the Vue starter kit: Inertia page under pages/auth/*
+            // (auto-wrapped in the kit's AuthLayout) + Fortify-style controller.
+            $this->publishes([
+                "{$uiStubs}/vue-embed/Passwordless.vue" => resource_path('js/pages/auth/Passwordless.vue'),
+                "{$uiStubs}/vue-embed/PasswordlessLoginController.php" => app_path('Http/Controllers/Auth/PasswordlessLoginController.php'),
+                "{$uiStubs}/vue-embed/routes.php" => base_path('routes/passwordless-ui.php'),
+            ], 'passwordless-ui-vue-embed');
         }
     }
 }
