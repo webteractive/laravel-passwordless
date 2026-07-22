@@ -44,16 +44,17 @@ class PasswordlessLoginController extends Controller
             return back()->withErrors(['email' => __('Please wait :s seconds and try again.', ['s' => $e->retryAfter])]);
         }
 
+        // Persist the email across the code-entry step (NOT flash — the code page
+        // renders before the user submits, which would consume flashed data).
         // Enumeration-safe: we always advance to the code step, known email or not.
-        return back()
-            ->with('passwordless.step', 'code')
-            ->with('passwordless.email', $data['email'])
-            ->with('status', __('If that email exists, a code is on its way.'));
+        $request->session()->put('passwordless.email', $data['email']);
+
+        return back()->with('status', __('If that email exists, a code is on its way.'));
     }
 
     public function verify(Request $request): RedirectResponse
     {
-        $email = session('passwordless.email');
+        $email = $request->session()->get('passwordless.email');
         $data = $request->validate(['code' => ['required', 'string']]);
 
         if (! $email) {
@@ -63,17 +64,25 @@ class PasswordlessLoginController extends Controller
         try {
             $user = Passwordless::loginCode()->verify($email, $data['code'], $request);
         } catch (LoginCodeLockedException $e) {
-            return $this->backToCode($email, ['code' => __('Too many attempts. Try again in :s seconds.', ['s' => $e->retryAfter])]);
+            return back()->withErrors(['code' => __('Too many attempts. Try again in :s seconds.', ['s' => $e->retryAfter])]);
         } catch (LoginCodeInvalidException) {
-            return $this->backToCode($email, ['code' => __('That code is invalid or expired.')]);
+            return back()->withErrors(['code' => __('That code is invalid or expired.')]);
         } catch (LoginCodeGateDeniedException $e) {
-            return $this->backToCode($email, ['code' => $e->getMessage()]);
+            return back()->withErrors(['code' => $e->getMessage()]);
         }
 
+        $request->session()->forget('passwordless.email');
         Auth::guard(config('passwordless.guard'))->login($user);
         $request->session()->regenerate();
 
         return redirect()->intended(config('fortify.home', '/dashboard'));
+    }
+
+    public function startOver(Request $request): RedirectResponse
+    {
+        $request->session()->forget('passwordless.email');
+
+        return redirect()->route('passwordless.login');
     }
 
     public function requestLink(Request $request): RedirectResponse
@@ -87,14 +96,6 @@ class PasswordlessLoginController extends Controller
         }
 
         return back()->with('status', __('If that email exists, a sign-in link is on its way.'));
-    }
-
-    protected function backToCode(string $email, array $errors): RedirectResponse
-    {
-        return back()
-            ->with('passwordless.step', 'code')
-            ->with('passwordless.email', $email)
-            ->withErrors($errors);
     }
 
     protected function context(Request $request): array

@@ -14,8 +14,8 @@
     Wire the routes from the published routes/passwordless-ui.php.
 --}}
 @php
-    $step = session('passwordless.step', 'email');
     $email = session('passwordless.email');
+    $step = $email ? 'code' : 'email';
     $codeEnabled = (bool) config('passwordless.strategies.login_code.enabled', true);
     $linkEnabled = (bool) config('passwordless.strategies.magic_link.enabled', true);
 @endphp
@@ -66,7 +66,7 @@
                     <flux:link href="#" onclick="this.closest('form').submit(); return false;">{{ __('Resend code') }}</flux:link>
                 </form>
 
-                <flux:link :href="route('passwordless.login')" wire:navigate>{{ __('Use a different email') }}</flux:link>
+                <flux:link :href="route('passwordless.start-over')" wire:navigate>{{ __('Use a different email') }}</flux:link>
             </div>
         @else
             {{-- Step 1 · email --}}

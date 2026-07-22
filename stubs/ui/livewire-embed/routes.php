@@ -28,6 +28,7 @@ use Illuminate\Support\Facades\Route;
 
 Route::middleware(['web', 'guest'])->group(function () {
     Route::get('passwordless', [PasswordlessLoginController::class, 'create'])->name('passwordless.login');
+    Route::get('passwordless/start-over', [PasswordlessLoginController::class, 'startOver'])->name('passwordless.start-over');
     Route::post('passwordless/code', [PasswordlessLoginController::class, 'requestCode'])->name('passwordless.request');
     Route::post('passwordless/verify', [PasswordlessLoginController::class, 'verify'])->name('passwordless.verify');
     Route::post('passwordless/link', [PasswordlessLoginController::class, 'requestLink'])->name('passwordless.link');
