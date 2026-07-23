@@ -94,4 +94,47 @@ return [
 
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Social login (Socialite)
+    |--------------------------------------------------------------------------
+    |
+    | Credentials live in config/services.php (Socialite's convention). Here you
+    | only enable providers and (optionally) tune scopes / redirect params. Only
+    | listed providers get routes; install the driver + add keys, then list it.
+    */
+    'social' => [
+        'providers' => [
+            // 'google',
+            // 'github' => ['scopes' => ['read:user']],
+        ],
+        'auto_register' => true,
+
+        // An email is linked/registered only when it is provably verified: the
+        // provider sends `email_verified: true`, OR the provider is listed here
+        // (known to return verified emails). An explicit `email_verified: false`
+        // always wins. This prevents account takeover via an unverified email.
+        'trusted_providers' => [
+            'google', 'github', 'gitlab', 'bitbucket',
+            'microsoft', 'azure', 'apple', 'linkedin', 'linkedin-openid', 'facebook',
+        ],
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Domain allow-list
+    |--------------------------------------------------------------------------
+    |
+    | An empty `allowed` list disables all checks (no behavior change). When set,
+    | enforcement is independent per type (passwordless = magic link + login
+    | code, social) and per action (login of existing users, register/auto-create).
+    */
+    'domains' => [
+        'allowed' => [],
+        'enforce' => [
+            'passwordless' => ['login' => false, 'register' => true],
+            'social' => ['login' => false, 'register' => true],
+        ],
+    ],
+
 ];

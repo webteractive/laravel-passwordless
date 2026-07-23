@@ -22,6 +22,12 @@ class UserResolver
             return null;
         }
 
+        // Enumeration-safe registration gate: a disallowed domain simply isn't
+        // created, so the caller behaves exactly as it does for an unknown email.
+        if (! DomainPolicy::allows('passwordless', 'register', $email)) {
+            return null;
+        }
+
         $model = config('passwordless.user_model');
         $column = config('passwordless.user_email_column', 'email');
 

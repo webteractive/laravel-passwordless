@@ -11,4 +11,9 @@ it('publishes config with expected defaults', function () {
     expect(config('passwordless.strategies.magic_link.ttl'))->toBe(15 * 60);
     expect(config('passwordless.strategies.login_code.length'))->toBe(6);
     expect(config('passwordless.strategies.login_code.channel'))->toBe('mail');
+    expect(config('passwordless.social.auto_register'))->toBeTrue();
+    expect(config('passwordless.social.providers'))->toBe([]);
+    expect(config('passwordless.domains.allowed'))->toBe([]);
+    expect(config('passwordless.domains.enforce.social.register'))->toBeTrue();
+    expect(config('passwordless.domains.enforce.passwordless.login'))->toBeFalse();
 });

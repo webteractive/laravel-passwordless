@@ -7,7 +7,9 @@ use Illuminate\Support\Facades\Facade;
 /**
  * @method static \Webteractive\Passwordless\Contracts\MagicLinkStrategy magicLink()
  * @method static \Webteractive\Passwordless\Contracts\LoginCodeStrategy loginCode()
+ * @method static \Webteractive\Passwordless\Contracts\SocialStrategy social()
  * @method static void gateUsing(\Closure $cb)
+ * @method static void resolveSocialUserUsing(\Closure $cb)
  * @method static void recordUsing(\Closure $cb)
  * @method static \Webteractive\Passwordless\Support\Decision runGate(mixed $user, array $context = [])
  * @method static void record(\Webteractive\Passwordless\Support\AuthEvent $event)

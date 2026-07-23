@@ -18,6 +18,8 @@ POST /auth/login-code/verify   { "email": "ada@example.com", "code": "123456" } 
 
 - ✉️ **Magic link** — signed, single-use, time-limited URL, with optional same-browser enforcement.
 - 🔢 **Login code** — short numeric OTP over email (SMS/WhatsApp/etc. via a pluggable channel contract).
+- 🌐 **Social login (OAuth)** — Google, GitHub, and any Socialite provider: verified-email account linking, auto-registration, and encrypted token storage. Install the driver + add keys → it works.
+- 🚧 **Domain limiting** — restrict which email domains may log in and/or auto-register, per strategy type.
 - 🛡️ **Secure by default** — hashing at rest, single-use, enumeration protection, lockout, resend cooldown, and burst throttling — all on out of the box.
 - 🔌 **Headless** — JSON endpoints, lifecycle events, a pre-auth gate, and an audit funnel. Bring any frontend.
 - 🎨 **Optional UI kit** — publish a ready-made login page for Blade, React, or Vue (standalone or matched to an official starter kit). Nothing is routed unless you opt in.
@@ -40,6 +42,8 @@ POST /auth/login-code/verify   { "email": "ada@example.com", "code": "123456" } 
 - [Quickstart](#quickstart)
 - [Endpoints](#endpoints)
 - [HTTP responses](#http-responses)
+- [Social login](#social-login)
+- [Domain limiting](#domain-limiting)
 - [Optional UI kit](#optional-ui-kit)
 - [Security defaults](#security-defaults)
 - [Configuration](#configuration)
@@ -118,6 +122,8 @@ Registered under the `route_prefix` (`auth` by default), inside the `web` middle
 | `POST` | `/auth/login-code/verify` | verify a code and sign in |
 | `POST` | `/auth/magic-link` | request a magic link |
 | `GET`  | `/auth/magic-link/{token}` | consume a signed link and sign in |
+| `GET`  | `/auth/social/{provider}/redirect` | start the OAuth flow |
+| `GET`  | `/auth/social/{provider}/callback` | handle the OAuth callback and sign in |
 
 Request endpoints always return `202` whether or not the email exists (enumeration protection).
 Login codes are numeric **strings**, default length **6** (configurable 6–10) — leading zeros are
@@ -135,6 +141,81 @@ preserved. Full status codes below.
 | Pre-auth gate denied | `403` | `{ "message": "<reason>" }` |
 | Resend cooldown active | `429` | `Retry-After`, `{ "message", "retry_after" }` |
 | Locked out (max attempts) | `423` | `Retry-After`, `{ "message", "retry_after" }` |
+
+## Social login
+
+OAuth sign-in via [Laravel Socialite](https://laravel.com/docs/socialite). The package handles
+identity storage, verified-email account linking, auto-registration, and encrypted token storage —
+you just enable a provider and supply keys.
+
+1. Install the driver (Google/GitHub/etc. ship with Socialite; others via `socialiteproviders/*`).
+2. Add credentials to `config/services.php` (Socialite's convention):
+   ```php
+   'google' => [
+       'client_id'     => env('GOOGLE_CLIENT_ID'),
+       'client_secret' => env('GOOGLE_CLIENT_SECRET'),
+       'redirect'      => env('GOOGLE_REDIRECT_URI'),
+   ],
+   ```
+3. Enable it in `config/passwordless.php` (this is a thin enable-list — no secrets here):
+   ```php
+   'social' => [
+       'providers' => [
+           'google',
+           'github' => ['scopes' => ['read:user']],
+       ],
+       'auto_register' => true,
+   ],
+   ```
+4. Link a button to the redirect route:
+   ```blade
+   <a href="{{ route('passwordless.social.redirect', 'google') }}">Continue with Google</a>
+   ```
+
+**How a user is resolved** on callback: a known `(provider, provider_id)` logs straight in; else,
+for a **verified** email, it links to an existing user, or auto-registers a new one (when
+`social.auto_register` is on). Only listed providers get routes — others return `404`. Access/refresh
+tokens are stored **encrypted**. Fires `SocialAuthenticated` + `UserAuthenticated`.
+
+**Email verification (account-takeover protection).** Linking/registering by email requires proof
+the email is verified — the provider sends `email_verified: true`, or the provider is on the
+`social.trusted_providers` allow-list (mainstream providers that only return verified emails). An
+explicit `email_verified: false` always denies. Unverified → `403`. This prevents an attacker with
+an unverified address at some provider from taking over an existing account. (Known-identity logins
+skip this check — identity is already proven.) Override the whole resolution with
+`resolveSocialUserUsing()` if you need custom verification.
+
+**Custom resolution** — override how a Socialite user maps to an app user (stricter verification,
+custom fields):
+
+```php
+use Webteractive\Passwordless\Facades\Passwordless;
+
+Passwordless::resolveSocialUserUsing(function (string $provider, $oauth, $container) {
+    // return an app user, or null to deny
+    return User::firstOrCreate(['email' => $oauth->getEmail()], ['name' => $oauth->getName()]);
+});
+```
+
+## Domain limiting
+
+Restrict which email domains may authenticate. An empty `allowed` list disables all checks (the
+default — no behavior change). When set, enforcement is independent **per type** (`passwordless` =
+magic link + login code, `social`) and **per action** (`login` of existing users, `register` /
+auto-create):
+
+```php
+'domains' => [
+    'allowed' => ['acme.com'],
+    'enforce' => [
+        'passwordless' => ['login' => false, 'register' => true],
+        'social'       => ['login' => true,  'register' => true],
+    ],
+],
+```
+
+Blocked auto-registration is enumeration-safe (behaves like an unknown email); a blocked login
+returns `403`.
 
 ## Optional UI kit
 
@@ -218,6 +299,20 @@ return [
         'magic_link' => ['enabled' => true, 'ttl' => 15 * 60, 'same_browser' => true],
         'login_code' => ['enabled' => true, 'length' => 6, 'ttl' => 10 * 60, 'channel' => 'mail'],
     ],
+
+    'social' => [
+        'providers' => ['google', 'github' => ['scopes' => ['read:user']]],
+        'auto_register' => true,
+        'trusted_providers' => ['google', 'github', 'apple', /* … */], // treated as verified-email
+    ],
+
+    'domains' => [
+        'allowed' => [],          // empty = unrestricted
+        'enforce' => [
+            'passwordless' => ['login' => false, 'register' => true],
+            'social'       => ['login' => false, 'register' => true],
+        ],
+    ],
 ];
 ```
 
@@ -232,7 +327,8 @@ Listen for the full lifecycle (namespace `Webteractive\Passwordless\Events`):
 | `LoginCodeRequested` | a login code is requested |
 | `LoginCodeVerified` | a login code is verified |
 | `LoginCodeFailed` | a login code verification fails |
-| `AuthenticationDenied` | the pre-auth gate denies (carries the reason) |
+| `SocialAuthenticated` | a social provider authenticates a user (carries provider, registered, linked) |
+| `AuthenticationDenied` | the pre-auth gate or a domain rule denies (carries the reason) |
 | `UserAuthenticated` | any strategy authenticates a user (umbrella) |
 
 Prefer a single hook over subscribing to each? See the [audit funnel](#audit-funnel).

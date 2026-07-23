@@ -8,8 +8,10 @@ use Webteractive\Passwordless\Channels\MailLoginCodeChannel;
 use Webteractive\Passwordless\Commands\PruneCommand;
 use Webteractive\Passwordless\Contracts\LoginCodeStrategy;
 use Webteractive\Passwordless\Contracts\MagicLinkStrategy;
+use Webteractive\Passwordless\Contracts\SocialStrategy;
 use Webteractive\Passwordless\Strategies\LoginCode\DefaultLoginCodeStrategy;
 use Webteractive\Passwordless\Strategies\MagicLink\DefaultMagicLinkStrategy;
+use Webteractive\Passwordless\Strategies\Social\DefaultSocialStrategy;
 
 class PasswordlessServiceProvider extends PackageServiceProvider
 {
@@ -18,7 +20,10 @@ class PasswordlessServiceProvider extends PackageServiceProvider
         $package
             ->name('passwordless')
             ->hasConfigFile()
-            ->hasMigration('create_passwordless_challenges_table')
+            ->hasMigrations([
+                'create_passwordless_challenges_table',
+                'create_passwordless_social_accounts_table',
+            ])
             ->hasRoute('web')
             ->hasRoute('api')
             ->hasTranslations()
@@ -32,6 +37,7 @@ class PasswordlessServiceProvider extends PackageServiceProvider
 
         $this->app->bind(MagicLinkStrategy::class, DefaultMagicLinkStrategy::class);
         $this->app->bind(LoginCodeStrategy::class, DefaultLoginCodeStrategy::class);
+        $this->app->bind(SocialStrategy::class, DefaultSocialStrategy::class);
         $this->app->bind('passwordless.login_code_channels.mail', MailLoginCodeChannel::class);
     }
 

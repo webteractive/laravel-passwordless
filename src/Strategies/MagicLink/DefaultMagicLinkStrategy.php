@@ -15,6 +15,7 @@ use Webteractive\Passwordless\Models\Challenge;
 use Webteractive\Passwordless\Notifications\MagicLinkNotification;
 use Webteractive\Passwordless\Passwordless;
 use Webteractive\Passwordless\Support\BrowserCookie;
+use Webteractive\Passwordless\Support\DomainPolicy;
 use Webteractive\Passwordless\Support\ResendCooldown;
 use Webteractive\Passwordless\Support\TokenHasher;
 use Webteractive\Passwordless\Support\UserResolver;
@@ -120,6 +121,12 @@ class DefaultMagicLinkStrategy implements MagicLinkStrategy
 
         if (! $user) {
             throw new MagicLinkInvalidException;
+        }
+
+        $email = $user->{config('passwordless.user_email_column', 'email')};
+        if (! DomainPolicy::allows('passwordless', 'login', $email)) {
+            event(new AuthenticationDenied('magic_link', $user, 'domain_not_allowed'));
+            throw new MagicLinkGateDeniedException('domain_not_allowed');
         }
 
         /** @var Passwordless $manager */

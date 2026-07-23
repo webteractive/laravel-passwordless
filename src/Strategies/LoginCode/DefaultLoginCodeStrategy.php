@@ -13,6 +13,7 @@ use Webteractive\Passwordless\Events\LoginCodeVerified;
 use Webteractive\Passwordless\Events\UserAuthenticated;
 use Webteractive\Passwordless\Models\Challenge;
 use Webteractive\Passwordless\Passwordless;
+use Webteractive\Passwordless\Support\DomainPolicy;
 use Webteractive\Passwordless\Support\Lockout;
 use Webteractive\Passwordless\Support\ResendCooldown;
 use Webteractive\Passwordless\Support\TokenHasher;
@@ -110,6 +111,11 @@ class DefaultLoginCodeStrategy implements LoginCodeStrategy
             $this->lockout->recordFailure('login_code', $email);
             event(new LoginCodeFailed($email, 'invalid_or_expired'));
             throw new LoginCodeInvalidException;
+        }
+
+        if (! DomainPolicy::allows('passwordless', 'login', $email)) {
+            event(new AuthenticationDenied('login_code', $user, 'domain_not_allowed'));
+            throw new LoginCodeGateDeniedException('domain_not_allowed');
         }
 
         /** @var Passwordless $manager */

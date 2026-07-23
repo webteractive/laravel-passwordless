@@ -6,6 +6,7 @@ use Closure;
 use Illuminate\Contracts\Container\Container;
 use Webteractive\Passwordless\Contracts\LoginCodeStrategy;
 use Webteractive\Passwordless\Contracts\MagicLinkStrategy;
+use Webteractive\Passwordless\Contracts\SocialStrategy;
 use Webteractive\Passwordless\Support\AuthEvent;
 use Webteractive\Passwordless\Support\Decision;
 use Webteractive\Passwordless\Testing\PasswordlessFake;
@@ -15,6 +16,8 @@ class Passwordless
     protected ?Closure $gate = null;
 
     protected ?Closure $recorder = null;
+
+    protected ?Closure $socialResolver = null;
 
     protected ?PasswordlessFake $fake = null;
 
@@ -28,6 +31,26 @@ class Passwordless
     public function loginCode(): LoginCodeStrategy
     {
         return $this->container->make(LoginCodeStrategy::class);
+    }
+
+    public function social(): SocialStrategy
+    {
+        return $this->container->make(SocialStrategy::class);
+    }
+
+    /**
+     * Override how a Socialite user maps to (or creates) an app user. The
+     * closure receives ($provider, \Laravel\Socialite\Contracts\User, $container)
+     * and must return the app user, or null to deny.
+     */
+    public function resolveSocialUserUsing(Closure $cb): void
+    {
+        $this->socialResolver = $cb;
+    }
+
+    public function socialResolver(): ?Closure
+    {
+        return $this->socialResolver;
     }
 
     public function gateUsing(Closure $cb): void
