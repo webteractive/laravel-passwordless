@@ -11,6 +11,8 @@ use Illuminate\Support\Facades\Facade;
  * @method static void gateUsing(\Closure $cb)
  * @method static void resolveSocialUserUsing(\Closure $cb)
  * @method static void recordUsing(\Closure $cb)
+ * @method static void redirectUsing(\Closure $cb)
+ * @method static string resolveRedirect(mixed $user, \Illuminate\Http\Request $request)
  * @method static \Webteractive\Passwordless\Support\Decision runGate(mixed $user, array $context = [])
  * @method static void record(\Webteractive\Passwordless\Support\AuthEvent $event)
  * @method static \Webteractive\Passwordless\Support\Decision allow()

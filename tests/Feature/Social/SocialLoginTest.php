@@ -5,6 +5,7 @@ use Laravel\Socialite\Contracts\Factory as SocialiteFactory;
 use Laravel\Socialite\Contracts\Provider as SocialiteProvider;
 use Laravel\Socialite\Two\InvalidStateException;
 use Laravel\Socialite\Two\User as SocialiteUser;
+use Webteractive\Passwordless\Facades\Passwordless;
 use Webteractive\Passwordless\Models\SocialAccount;
 use Workbench\App\Models\User;
 
@@ -181,6 +182,30 @@ it('applies the passwordless throttle to the social routes', function () {
         expect($middleware->contains(fn ($m) => is_string($m) && str_contains($m, 'PasswordlessThrottle')))
             ->toBeTrue("{$name} is not throttled");
     }
+});
+
+it('redirects to the middleware-set intended URL after callback', function () {
+    fakeSocialite(['email' => 'ada@example.com', 'id' => 'g-int']);
+
+    $this->withSession(['url.intended' => 'http://localhost/deep/link'])
+        ->get('/auth/social/google/callback')
+        ->assertRedirect('http://localhost/deep/link');
+});
+
+it('redirects to the redirectUsing closure when no intended URL is set', function () {
+    User::create(['email' => 'ada@example.com', 'name' => 'Ada', 'password' => bcrypt('x')]);
+    Passwordless::redirectUsing(fn ($user, $request) => '/admin');
+    fakeSocialite(['email' => 'ada@example.com', 'id' => 'g-clo']);
+
+    $this->get('/auth/social/google/callback')->assertRedirect('/admin');
+});
+
+it('redirects to the config fallback when no intended URL and no closure', function () {
+    config()->set('passwordless.redirect', '/welcome');
+    User::create(['email' => 'ada@example.com', 'name' => 'Ada', 'password' => bcrypt('x')]);
+    fakeSocialite(['email' => 'ada@example.com', 'id' => 'g-cfg']);
+
+    $this->get('/auth/social/google/callback')->assertRedirect('/welcome');
 });
 
 it('returns a token payload in api_mode', function () {

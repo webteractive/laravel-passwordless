@@ -18,6 +18,10 @@ return [
     */
     'guard' => 'web',
     'route_prefix' => 'auth',
+
+    // Where server-driven logins (social callback, published embed controllers)
+    // land after auth. This is the final fallback: a middleware-set intended URL
+    // wins first, then a Passwordless::redirectUsing() closure, then this value.
     'redirect' => '/',
     'api_mode' => false,
 

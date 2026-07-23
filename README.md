@@ -358,6 +358,26 @@ use Webteractive\Passwordless\Support\AuthEvent;
 Passwordless::recordUsing(fn (AuthEvent $event) => AuditLog::write($event));
 ```
 
+### Post-auth redirect
+
+Customize where server-driven logins land — the social callback and the published
+embed controllers. The closure receives `($user, $request)` and returns a URL. It
+is used as the fallback for `redirect()->intended(...)`, so a middleware-set
+intended URL (e.g. the page a guest was bounced from) still wins; the closure only
+decides where you land otherwise. When no closure is set, `config('passwordless.redirect')`
+is used.
+
+```php
+use Webteractive\Passwordless\Facades\Passwordless;
+
+Passwordless::redirectUsing(fn ($user, $request) =>
+    $user->is_admin ? '/admin' : '/dashboard'
+);
+```
+
+> The headless magic-link and login-code endpoints return `204`/JSON and never
+> redirect, so this hook does not apply to them — your frontend navigates itself.
+
 ### Custom login-code channels
 
 Email is the built-in channel. Add SMS, WhatsApp, etc. by implementing the contract:

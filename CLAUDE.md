@@ -39,7 +39,7 @@ These are PRD decisions made during planning. Do not relitigate without explicit
 
 ## Code map
 
-- `src/Passwordless.php` — manager (`magicLink/loginCode/gateUsing/recordUsing/fake`).
+- `src/Passwordless.php` — manager (`magicLink/loginCode/gateUsing/recordUsing/redirectUsing/resolveRedirect/fake`).
 - `src/Strategies/{MagicLink,LoginCode}/` — default strategy implementations + per-strategy exceptions.
 - `src/Http/Controllers/{MagicLink,LoginCode}/` — invokable controllers.
 - `src/Http/Middleware/PasswordlessThrottle.php` — request/verify burst throttle.
@@ -68,6 +68,7 @@ Pest under `tests/`. Workbench user model at `workbench/app/Models/User.php`. Th
 
 - `Passwordless::gateUsing(closure)` — pre-auth allow/deny.
 - `Passwordless::recordUsing(closure)` — single observability funnel.
+- `Passwordless::redirectUsing(closure)` — customize the post-auth redirect fallback for server-driven flows (social callback + embed controllers). Receives `($user, $request)`, returns a URL; used as the `intended()` fallback so a middleware-set intended URL still wins.
 - `Passwordless::fake()` — test helper.
 - `LoginCodeChannel` contract for SMS/WhatsApp/etc.
 - Per-strategy contract bindings — swap implementations via the container.

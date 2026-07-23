@@ -86,7 +86,9 @@ class PasswordlessLoginController extends Controller
         Auth::guard(config('passwordless.guard'))->login($user);
         $request->session()->regenerate();
 
-        return redirect()->intended(config('fortify.home', '/dashboard'));
+        // Honors a middleware-set intended URL first, then the package's
+        // Passwordless::redirectUsing() closure, then config('passwordless.redirect').
+        return redirect()->intended(Passwordless::resolveRedirect($user, $request));
     }
 
     public function requestLink(Request $request): RedirectResponse

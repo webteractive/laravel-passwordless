@@ -51,3 +51,45 @@ it('static allow/deny return Decision', function () {
     expect(Passwordless::allow())->toBeInstanceOf(Decision::class);
     expect(Passwordless::deny('x'))->toBeInstanceOf(Decision::class);
 });
+
+it('resolveRedirect falls back to config when no closure is set', function () {
+    config()->set('passwordless.redirect', '/home');
+    /** @var Passwordless $m */
+    $m = app(Passwordless::class);
+
+    expect($m->resolveRedirect(null, request()))->toBe('/home');
+});
+
+it('resolveRedirect uses the redirectUsing closure', function () {
+    /** @var Passwordless $m */
+    $m = app(Passwordless::class);
+    $m->redirectUsing(fn ($user, $request) => '/dashboard');
+
+    expect($m->resolveRedirect(null, request()))->toBe('/dashboard');
+});
+
+it('resolveRedirect passes the user and request to the closure', function () {
+    /** @var Passwordless $m */
+    $m = app(Passwordless::class);
+    $received = [];
+    $m->redirectUsing(function ($user, $request) use (&$received) {
+        $received = [$user, $request];
+
+        return '/x';
+    });
+
+    $req = request();
+    $m->resolveRedirect('the-user', $req);
+
+    expect($received[0])->toBe('the-user');
+    expect($received[1])->toBe($req);
+});
+
+it('resolveRedirect coerces a non-string closure return to the config default', function () {
+    config()->set('passwordless.redirect', '/fallback');
+    /** @var Passwordless $m */
+    $m = app(Passwordless::class);
+    $m->redirectUsing(fn ($user, $request) => null);
+
+    expect($m->resolveRedirect(null, request()))->toBe('/fallback');
+});

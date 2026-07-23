@@ -4,6 +4,7 @@ namespace Webteractive\Passwordless;
 
 use Closure;
 use Illuminate\Contracts\Container\Container;
+use Illuminate\Http\Request;
 use Webteractive\Passwordless\Contracts\LoginCodeStrategy;
 use Webteractive\Passwordless\Contracts\MagicLinkStrategy;
 use Webteractive\Passwordless\Contracts\SocialStrategy;
@@ -18,6 +19,8 @@ class Passwordless
     protected ?Closure $recorder = null;
 
     protected ?Closure $socialResolver = null;
+
+    protected ?Closure $redirectResolver = null;
 
     protected ?PasswordlessFake $fake = null;
 
@@ -56,6 +59,33 @@ class Passwordless
     public function gateUsing(Closure $cb): void
     {
         $this->gate = $cb;
+    }
+
+    /**
+     * Customize where server-driven logins (social callback, published embed
+     * controllers) land when Laravel has no intended URL to return to. The
+     * closure receives ($user, $request) and must return a URL string; it is
+     * used as the fallback for redirect()->intended(), so a middleware-set
+     * intended URL still wins when present.
+     */
+    public function redirectUsing(Closure $cb): void
+    {
+        $this->redirectResolver = $cb;
+    }
+
+    public function resolveRedirect(mixed $user, Request $request): string
+    {
+        $default = config('passwordless.redirect', '/');
+
+        if ($this->redirectResolver === null) {
+            return $default;
+        }
+
+        $result = ($this->redirectResolver)($user, $request);
+
+        // Fail safe: null / non-string / empty coerces back to the config
+        // default, the same spirit as runGate() coercing invalid returns.
+        return is_string($result) && $result !== '' ? $result : $default;
     }
 
     public function recordUsing(Closure $cb): void

@@ -2,6 +2,12 @@
 
 All notable changes to `laravel-passwordless` will be documented in this file.
 
+## 0.1.2 - 2026-07-23
+
+### Added
+
+- **Customizable post-auth redirect** — `Passwordless::redirectUsing(fn ($user, $request) => ...)` sets where server-driven logins (social callback, published embed controllers) land. The returned URL is used as the fallback for `redirect()->intended()`, so a middleware-set intended URL still wins; when no closure is set it falls back to `config('passwordless.redirect')`. Headless magic-link/login-code endpoints (JSON/`204`) are unaffected.
+
 ## 0.1.1 - 2026-07-23
 
 ### Added

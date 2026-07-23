@@ -7,12 +7,13 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Laravel\Socialite\Two\InvalidStateException;
 use Webteractive\Passwordless\Contracts\SocialStrategy;
+use Webteractive\Passwordless\Passwordless;
 use Webteractive\Passwordless\Strategies\Social\SocialGateDeniedException;
 use Webteractive\Passwordless\Strategies\Social\SocialProviderNotEnabledException;
 
 class CallbackController
 {
-    public function __invoke(Request $request, string $provider, SocialStrategy $strategy): JsonResponse|RedirectResponse
+    public function __invoke(Request $request, string $provider, SocialStrategy $strategy, Passwordless $passwordless): JsonResponse|RedirectResponse
     {
         try {
             $user = $strategy->callback($provider, $request);
@@ -36,6 +37,6 @@ class CallbackController
 
         auth(config('passwordless.guard'))->login($user);
 
-        return redirect()->intended(config('passwordless.redirect', '/'));
+        return redirect()->intended($passwordless->resolveRedirect($user, $request));
     }
 }
