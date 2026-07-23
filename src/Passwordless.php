@@ -6,6 +6,7 @@ use Closure;
 use Illuminate\Contracts\Container\Container;
 use Illuminate\Http\Request;
 use Webteractive\Passwordless\Contracts\LoginCodeStrategy;
+use Webteractive\Passwordless\Contracts\MagicCodeStrategy;
 use Webteractive\Passwordless\Contracts\MagicLinkStrategy;
 use Webteractive\Passwordless\Contracts\SocialStrategy;
 use Webteractive\Passwordless\Support\AuthEvent;
@@ -39,6 +40,11 @@ class Passwordless
     public function social(): SocialStrategy
     {
         return $this->container->make(SocialStrategy::class);
+    }
+
+    public function magicCode(): MagicCodeStrategy
+    {
+        return $this->container->make(MagicCodeStrategy::class);
     }
 
     /**

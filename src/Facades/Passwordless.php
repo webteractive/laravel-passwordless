@@ -8,6 +8,7 @@ use Illuminate\Support\Facades\Facade;
  * @method static \Webteractive\Passwordless\Contracts\MagicLinkStrategy magicLink()
  * @method static \Webteractive\Passwordless\Contracts\LoginCodeStrategy loginCode()
  * @method static \Webteractive\Passwordless\Contracts\SocialStrategy social()
+ * @method static \Webteractive\Passwordless\Contracts\MagicCodeStrategy magicCode()
  * @method static void gateUsing(\Closure $cb)
  * @method static void resolveSocialUserUsing(\Closure $cb)
  * @method static void recordUsing(\Closure $cb)
@@ -20,6 +21,7 @@ use Illuminate\Support\Facades\Facade;
  * @method static \Webteractive\Passwordless\Testing\PasswordlessFake fake()
  * @method static void assertLinkSent(string $email)
  * @method static void assertCodeSent(string $email)
+ * @method static void assertMagicCodeSent(string $email)
  * @method static void assertNothingSent()
  * @method static \Webteractive\Passwordless\Testing\PasswordlessFake respondWith(mixed $user)
  *

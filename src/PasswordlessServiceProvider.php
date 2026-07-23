@@ -7,9 +7,11 @@ use Spatie\LaravelPackageTools\PackageServiceProvider;
 use Webteractive\Passwordless\Channels\MailLoginCodeChannel;
 use Webteractive\Passwordless\Commands\PruneCommand;
 use Webteractive\Passwordless\Contracts\LoginCodeStrategy;
+use Webteractive\Passwordless\Contracts\MagicCodeStrategy;
 use Webteractive\Passwordless\Contracts\MagicLinkStrategy;
 use Webteractive\Passwordless\Contracts\SocialStrategy;
 use Webteractive\Passwordless\Strategies\LoginCode\DefaultLoginCodeStrategy;
+use Webteractive\Passwordless\Strategies\MagicCode\DefaultMagicCodeStrategy;
 use Webteractive\Passwordless\Strategies\MagicLink\DefaultMagicLinkStrategy;
 use Webteractive\Passwordless\Strategies\Social\DefaultSocialStrategy;
 
@@ -37,6 +39,7 @@ class PasswordlessServiceProvider extends PackageServiceProvider
 
         $this->app->bind(MagicLinkStrategy::class, DefaultMagicLinkStrategy::class);
         $this->app->bind(LoginCodeStrategy::class, DefaultLoginCodeStrategy::class);
+        $this->app->bind(MagicCodeStrategy::class, DefaultMagicCodeStrategy::class);
         $this->app->bind(SocialStrategy::class, DefaultSocialStrategy::class);
         $this->app->bind('passwordless.login_code_channels.mail', MailLoginCodeChannel::class);
     }

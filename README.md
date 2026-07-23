@@ -18,6 +18,7 @@ POST /auth/login-code/verify   { "email": "ada@example.com", "code": "123456" } 
 
 - ✉️ **Magic link** — signed, single-use, time-limited URL, with optional same-browser enforcement.
 - 🔢 **Login code** — short numeric OTP over email (SMS/WhatsApp/etc. via a pluggable channel contract).
+- 🪄 **magicCode** — one email with both a magic link *and* a code; sign in with either, first one wins. Opt-in.
 - 🌐 **Social login (OAuth)** — Google, GitHub, and any Socialite provider: verified-email account linking, auto-registration, and encrypted token storage. Install the driver + add keys → it works.
 - 🚧 **Domain limiting** — restrict which email domains may log in and/or auto-register, per strategy type.
 - 🛡️ **Secure by default** — hashing at rest, single-use, enumeration protection, lockout, resend cooldown, and burst throttling — all on out of the box.
@@ -121,6 +122,9 @@ Registered under the `route_prefix` (`auth` by default), inside the `web` middle
 | `POST` | `/auth/login-code/verify` | verify a code and sign in |
 | `POST` | `/auth/magic-link` | request a magic link |
 | `GET`  | `/auth/magic-link/{token}` | consume a signed link and sign in |
+| `POST` | `/auth/magic-code` | request a combined link + code (magicCode) |
+| `GET`  | `/auth/magic-code/{token}` | consume the magicCode link and sign in |
+| `POST` | `/auth/magic-code/verify` | verify the magicCode code and sign in |
 | `GET`  | `/auth/social/{provider}/redirect` | start the OAuth flow |
 | `GET`  | `/auth/social/{provider}/callback` | handle the OAuth callback and sign in |
 
@@ -194,6 +198,46 @@ Passwordless::resolveSocialUserUsing(function (string $provider, $oauth, $contai
     // return an app user, or null to deny
     return User::firstOrCreate(['email' => $oauth->getEmail()], ['name' => $oauth->getName()]);
 });
+```
+
+## magicCode (link + code in one email)
+
+`magicCode` sends **one** email containing both a magic link and a numeric code. The user
+authenticates with whichever suits their device — click the link on the same machine, or type the
+code on a phone. The **first path used wins**; the other is invalidated immediately.
+
+It's **opt-in** (disabled by default) and **email-only**. Enable it:
+
+```php
+// config/passwordless.php
+'strategies' => [
+    'magic_code' => [
+        'enabled' => true,
+        'ttl' => 15 * 60,        // shared TTL for BOTH the link and the code
+        'same_browser' => true,  // enforced on the LINK path only
+        'code' => ['length' => 6],
+    ],
+],
+```
+
+Flow:
+
+```
+POST /auth/magic-code            { email }                 -> 202 (always)
+GET  /auth/magic-code/{token}    (signed link click)       -> sign in + redirect
+POST /auth/magic-code/verify     { email, code }           -> 204 (sign in)
+```
+
+While disabled, all three routes return `404`. The link path enforces same-browser (via the signed
+cookie) just like `magicLink`; the **code path is intentionally device-agnostic**, so a user can
+request on desktop and type the code on their phone — that flexibility is the whole point. All the
+usual protections apply: enumeration-safe send, resend cooldown, per-email lockout on failed code
+verifies, hashed-at-rest secrets, single-use.
+
+```php
+use Webteractive\Passwordless\Facades\Passwordless;
+
+Passwordless::magicCode()->send('user@example.com');
 ```
 
 ## Domain limiting
@@ -326,6 +370,10 @@ Listen for the full lifecycle (namespace `Webteractive\Passwordless\Events`):
 | `LoginCodeRequested` | a login code is requested |
 | `LoginCodeVerified` | a login code is verified |
 | `LoginCodeFailed` | a login code verification fails |
+| `MagicCodeRequested` | a magicCode (link + code) is requested |
+| `MagicCodeConsumed` | a magicCode link is consumed |
+| `MagicCodeVerified` | a magicCode code is verified |
+| `MagicCodeFailed` | a magicCode code verification fails |
 | `SocialAuthenticated` | a social provider authenticates a user (carries provider, registered, linked) |
 | `AuthenticationDenied` | the pre-auth gate or a domain rule denies (carries the reason) |
 | `UserAuthenticated` | any strategy authenticates a user (umbrella) |

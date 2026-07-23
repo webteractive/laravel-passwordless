@@ -2,6 +2,12 @@
 
 All notable changes to `laravel-passwordless` will be documented in this file.
 
+## 0.1.3 - 2026-07-23
+
+### Added
+
+- **magicCode** — a new combined strategy that sends **one** email containing both a magic link and a numeric login code. The user authenticates with either; the first path used wins and the sibling is invalidated. `Passwordless::magicCode()`, endpoints `POST /auth/magic-code`, `GET /auth/magic-code/{token}`, `POST /auth/magic-code/verify`. Reuses the `passwordless_challenges` table (two correlated `mc_link`/`mc_code` rows sharing a `magic_code_id`) — no schema change. Same-browser enforcement applies to the link path only; the code path is device-agnostic (request on desktop, type the code on a phone). Opt-in (`strategies.magic_code.enabled`, off by default; the routes 404 while disabled) and email-only. Full lifecycle events (`MagicCodeRequested/Consumed/Verified/Failed`) and `Passwordless::fake()` support (`assertMagicCodeSent()`).
+
 ## 0.1.2 - 2026-07-23
 
 ### Added

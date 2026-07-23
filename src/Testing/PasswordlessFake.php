@@ -5,6 +5,7 @@ namespace Webteractive\Passwordless\Testing;
 use Illuminate\Contracts\Container\Container;
 use PHPUnit\Framework\Assert as PHPUnit;
 use Webteractive\Passwordless\Contracts\LoginCodeStrategy;
+use Webteractive\Passwordless\Contracts\MagicCodeStrategy;
 use Webteractive\Passwordless\Contracts\MagicLinkStrategy;
 
 class PasswordlessFake
@@ -12,6 +13,8 @@ class PasswordlessFake
     public array $linksSent = [];
 
     public array $codesSent = [];
+
+    public array $magicCodesSent = [];
 
     /**
      * The user instance the fake strategies should return from verify/consume.
@@ -23,6 +26,7 @@ class PasswordlessFake
     {
         $this->container->instance(MagicLinkStrategy::class, new FakeMagicLinkStrategy($this));
         $this->container->instance(LoginCodeStrategy::class, new FakeLoginCodeStrategy($this));
+        $this->container->instance(MagicCodeStrategy::class, new FakeMagicCodeStrategy($this));
     }
 
     public function respondWith(mixed $user): self
@@ -42,6 +46,11 @@ class PasswordlessFake
         $this->codesSent[] = compact('email', 'context');
     }
 
+    public function recordMagicCode(string $email, array $context = []): void
+    {
+        $this->magicCodesSent[] = compact('email', 'context');
+    }
+
     public function assertLinkSent(string $email): void
     {
         PHPUnit::assertNotEmpty(
@@ -58,9 +67,18 @@ class PasswordlessFake
         );
     }
 
+    public function assertMagicCodeSent(string $email): void
+    {
+        PHPUnit::assertNotEmpty(
+            array_filter($this->magicCodesSent, fn ($l) => $l['email'] === $email),
+            "No magic code was sent to [{$email}]."
+        );
+    }
+
     public function assertNothingSent(): void
     {
         PHPUnit::assertEmpty($this->linksSent, 'Expected no magic links sent.');
         PHPUnit::assertEmpty($this->codesSent, 'Expected no login codes sent.');
+        PHPUnit::assertEmpty($this->magicCodesSent, 'Expected no magic codes sent.');
     }
 }

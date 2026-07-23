@@ -96,6 +96,19 @@ return [
             'channel' => 'mail',
         ],
 
+        // magicCode — one email carrying BOTH a magic link and a numeric code.
+        // The user authenticates with either; the first one used wins and the
+        // other is invalidated. Opt-in (off by default). Email only.
+        'magic_code' => [
+            'enabled' => false,
+            'ttl' => 15 * 60,        // shared TTL for both the link and the code
+            'same_browser' => true,  // enforced on the LINK path only
+            'code' => [
+                'length' => 6,
+            ],
+            'route_name' => 'passwordless.magic-code.consume',
+        ],
+
     ],
 
     /*

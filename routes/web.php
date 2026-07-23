@@ -3,6 +3,9 @@
 use Illuminate\Support\Facades\Route;
 use Webteractive\Passwordless\Http\Controllers\LoginCode\SendController as LoginCodeSendController;
 use Webteractive\Passwordless\Http\Controllers\LoginCode\VerifyController as LoginCodeVerifyController;
+use Webteractive\Passwordless\Http\Controllers\MagicCode\ConsumeController as MagicCodeConsumeController;
+use Webteractive\Passwordless\Http\Controllers\MagicCode\SendController as MagicCodeSendController;
+use Webteractive\Passwordless\Http\Controllers\MagicCode\VerifyController as MagicCodeVerifyController;
 use Webteractive\Passwordless\Http\Controllers\MagicLink\ConsumeController;
 use Webteractive\Passwordless\Http\Controllers\MagicLink\SendController;
 use Webteractive\Passwordless\Http\Controllers\Social\CallbackController as SocialCallbackController;
@@ -32,6 +35,21 @@ Route::group([
     Route::post('login-code/verify', LoginCodeVerifyController::class)
         ->middleware(PasswordlessThrottle::class.':verify')
         ->name('passwordless.login-code.verify');
+
+    // magicCode: one email with both a magic link and a login code. Send is one
+    // request; the user consumes EITHER path and the sibling is invalidated.
+    // Gated by strategies.magic_code.enabled inside the controllers (404 when off).
+    Route::post('magic-code', MagicCodeSendController::class)
+        ->middleware(PasswordlessThrottle::class.':request')
+        ->name('passwordless.magic-code.send');
+
+    Route::get('magic-code/{token}', MagicCodeConsumeController::class)
+        ->middleware(PasswordlessThrottle::class.':verify')
+        ->name('passwordless.magic-code.consume');
+
+    Route::post('magic-code/verify', MagicCodeVerifyController::class)
+        ->middleware(PasswordlessThrottle::class.':verify')
+        ->name('passwordless.magic-code.verify');
 
     // Social (OAuth via Socialite). Only providers listed in config get a
     // working driver; unknown/disabled providers 404 in the controllers.

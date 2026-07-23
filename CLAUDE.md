@@ -8,10 +8,11 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What this is
 
-A Laravel package providing two passwordless authentication strategies for Laravel 11 / 12 / 13 apps:
+A Laravel package providing passwordless authentication strategies for Laravel 11 / 12 / 13 apps:
 
 1. **Magic link** — signed, single-use, time-limited URL emailed to the user. Production-ready.
 2. **Login code** — short numeric OTP emailed to the user. Channel is a contract; email is the only built-in driver. Production-ready.
+3. **magicCode** — one email carrying BOTH a magic link and a login code; the user authenticates with either and the first one used wins (the sibling is invalidated). Opt-in (disabled by default), email-only.
 
 ## Architectural ground rules (load-bearing)
 
@@ -19,7 +20,7 @@ These are PRD decisions made during planning. Do not relitigate without explicit
 
 - **Backend only.** No frontend scaffolds, starter kits, Blade views, Livewire, or JS. Strictly headless.
 - **One table.**
-  - `passwordless_challenges` — ephemeral rows for magic link tokens and login codes (`type` ∈ {`link`, `code`}). Cleaned up by `passwordless:prune`.
+  - `passwordless_challenges` — ephemeral rows for magic link tokens and login codes (`type` ∈ {`link`, `code`}). magicCode reuses this table with two correlated rows per send (`type` ∈ {`mc_link`, `mc_code`}) sharing a `magic_code_id` in `metadata`. Cleaned up by `passwordless:prune`.
 - **User must already exist by default.** `auto_create_users` config is opt-in.
 - **Per-strategy enable/disable** via config flags (read at request time inside controllers, not at route registration).
 - **Guard integration** uses Laravel's session guard out of the box; `api_mode` returns Sanctum-style `{ token, user }` instead.
@@ -39,15 +40,15 @@ These are PRD decisions made during planning. Do not relitigate without explicit
 
 ## Code map
 
-- `src/Passwordless.php` — manager (`magicLink/loginCode/gateUsing/recordUsing/redirectUsing/resolveRedirect/fake`).
-- `src/Strategies/{MagicLink,LoginCode}/` — default strategy implementations + per-strategy exceptions.
-- `src/Http/Controllers/{MagicLink,LoginCode}/` — invokable controllers.
+- `src/Passwordless.php` — manager (`magicLink/loginCode/social/magicCode/gateUsing/recordUsing/redirectUsing/resolveRedirect/fake`).
+- `src/Strategies/{MagicLink,LoginCode,Social,MagicCode}/` — default strategy implementations + per-strategy exceptions. `MagicCode` reuses `LoginCode\CodeGenerator` and all `Support/` primitives; its controllers gate on `strategies.magic_code.enabled` (404 when off).
+- `src/Http/Controllers/{MagicLink,LoginCode,Social,MagicCode}/` — invokable controllers. `MagicCode\{Send,Consume,Verify}` — send is one request; the link consume (GET) redirects via `resolveRedirect`, the code verify (POST) returns `204`; each invalidates its sibling on success.
 - `src/Http/Middleware/PasswordlessThrottle.php` — request/verify burst throttle.
 - `src/Support/` — `Decision`, `AuthEvent`, `TokenHasher`, `EnumerationGuard`, `ResendCooldown`, `Lockout`, `BrowserCookie`, `UserResolver`.
 - `src/Channels/MailLoginCodeChannel.php` — built-in login-code channel; new channels register at `passwordless.login_code_channels.{name}`.
 - `src/Models/Challenge.php` — Eloquent model with scopes/casts.
-- `src/Events/` — full lifecycle events (`MagicLinkRequested/Consumed`, `LoginCodeRequested/Verified/Failed`, `AuthenticationDenied`, `UserAuthenticated`).
-- `src/Notifications/{MagicLink,LoginCode}Notification.php` — markdown mail.
+- `src/Events/` — full lifecycle events (`MagicLinkRequested/Consumed`, `LoginCodeRequested/Verified/Failed`, `MagicCodeRequested/Consumed/Verified/Failed`, `AuthenticationDenied`, `UserAuthenticated`).
+- `src/Notifications/{MagicLink,LoginCode,MagicCode}Notification.php` — markdown mail. `MagicCodeNotification($url, $code, $ttl)` renders the link button and the code in one message.
 - `src/Testing/PasswordlessFake.php` and the per-strategy fakes — used by `Passwordless::fake()`.
 - `routes/web.php` — all routes registered unconditionally; per-strategy gating belongs inside controllers.
 - `config/passwordless.php` — full option surface.
