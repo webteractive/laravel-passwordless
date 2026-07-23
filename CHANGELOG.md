@@ -2,9 +2,21 @@
 
 All notable changes to `laravel-passwordless` will be documented in this file.
 
+## Release 0.1.1 - 2026-07-23
+
+### Added
+
+- **Social login** via [Laravel Socialite](https://laravel.com/docs/socialite), integrated with the headless engine. New `passwordless_social_accounts` table (OAuth tokens **encrypted** at rest); identity resolved by known `(provider, provider_id)` → verified-email link → auto-registration. Enable providers in `config('passwordless.social.providers')`; credentials stay in `config/services.php`. Adds `Passwordless::social()`, `Passwordless::resolveSocialUserUsing()`, and the `SocialAuthenticated` event. Routes: `GET /auth/social/{provider}/{redirect,callback}` (throttled).
+  - **Security:** linking/registering requires a **verified email** — the provider's `email_verified` claim or a `social.trusted_providers` allow-list; an explicit `email_verified: false` always denies — preventing OAuth account takeover. An invalid/expired OAuth state returns `401`.
+  
+- **Domain limiting** — a `domains.allowed` allow-list with independent enforcement per type (`passwordless` = magic link + login code, `social`) and action (`login`, `register`). Empty by default (no-op); register-gating is enumeration-safe.
+
+**Full Changelog**: https://github.com/webteractive/laravel-passwordless/compare/v0.1.0...v0.1.1
+
 ## 0.1.1 - 2026-07-23
 
 ### Added
+
 - **Social login** via Laravel Socialite — `GET /auth/social/{provider}/{redirect,callback}` routes; resolves identity by known `(provider, provider_id)` → verified-email link → auto-registration; OAuth tokens stored **encrypted** in a new `passwordless_social_accounts` table. Linking/registering requires a verified email (provider `email_verified` claim or a `social.trusted_providers` allow-list) to prevent account takeover. Enable providers in `config('passwordless.social.providers')`; credentials stay in `config/services.php`. Adds `Passwordless::social()`, `Passwordless::resolveSocialUserUsing()`, and the `SocialAuthenticated` event.
 - **Domain limiting** — `domains.allowed` allow-list with independent enforcement per type (`passwordless` / `social`) and action (`login` / `register`). Empty by default (no-op); applies to magic link, login code, and social.
 
