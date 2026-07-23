@@ -71,7 +71,10 @@ login page, publish a stub matched to your Laravel starter kit. The stub becomes
 it talks to the JSON endpoints above via `fetch`, so the headless core stays untouched.
 
 Pick by your situation. **Standalone** stubs are self-contained pages (own layout + `@vite`) for
-apps with no auth yet; they submit to the JSON endpoints with `fetch`:
+apps with no auth yet; they submit to the JSON endpoints with `fetch`. The Livewire/Blade
+standalone uses plain vanilla JS (no Alpine required); the React/Vue standalones are Inertia
+pages best suited to greenfield Inertia apps — if you already run an official starter kit, prefer
+the matching `-embed` variant below.
 
 ```bash
 php artisan vendor:publish --tag=passwordless-ui-livewire   # Blade + Alpine (no extra deps)

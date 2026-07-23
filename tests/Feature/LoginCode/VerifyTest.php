@@ -1,6 +1,7 @@
 <?php
 
 use Illuminate\Support\Facades\Notification;
+use Illuminate\Support\Facades\Route;
 use Webteractive\Passwordless\Models\Challenge;
 use Webteractive\Passwordless\Notifications\LoginCodeNotification;
 use Workbench\App\Models\User;
@@ -32,6 +33,20 @@ it('logs in on valid code', function () {
         ->assertNoContent();
 
     expect(auth()->check())->toBeTrue();
+});
+
+it('persists the session-guard login across requests (web middleware)', function () {
+    // A route behind the session auth guard — only reachable if the login
+    // actually persisted in the session (i.e. the endpoints run through `web`).
+    Route::middleware(['web', 'auth'])->get('/__pwl_protected', fn () => 'ok');
+
+    $code = captureLoginCode('persist@example.com');
+
+    $this->postJson('/auth/login-code/verify', ['email' => 'persist@example.com', 'code' => $code])
+        ->assertNoContent();
+
+    // A fresh request must still be authenticated via the session cookie.
+    $this->get('/__pwl_protected')->assertOk()->assertSee('ok');
 });
 
 it('rejects wrong code', function () {

@@ -26,18 +26,16 @@ it('renders both strategy affordances and wires the JSON endpoints', function ()
 
     $html = renderLoginStub();
 
-    // @js(...) JSON-encodes the URLs, so slashes arrive escaped (http:\/\/...).
-    $encoded = fn (string $name) => trim(json_encode(route($name)), '"');
-
+    // The config JSON uses JSON_UNESCAPED_SLASHES, so route URLs appear verbatim.
     expect($html)
         ->toContain('Send me a code')
         ->toContain('Email me a magic link')
-        ->toContain($encoded('passwordless.login-code.send'))
-        ->toContain($encoded('passwordless.login-code.verify'))
-        ->toContain($encoded('passwordless.magic-link.send'))
+        ->toContain(route('passwordless.login-code.send'))
+        ->toContain(route('passwordless.login-code.verify'))
+        ->toContain(route('passwordless.magic-link.send'))
         ->toContain('name="csrf-token"')
         ->toContain('one-time-code')          // OTP inputs
-        ->toContain('codeLength: 6');
+        ->toContain('"codeLength":6');
 });
 
 it('hides the magic-link affordance when magic_link is disabled', function () {
@@ -78,5 +76,5 @@ it('reflects a custom login-code length in the OTP config', function () {
 
     $html = renderLoginStub();
 
-    expect($html)->toContain('codeLength: 8');
+    expect($html)->toContain('"codeLength":8');
 });

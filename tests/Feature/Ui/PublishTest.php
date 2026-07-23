@@ -79,7 +79,7 @@ it('actually copies the Blade stub to the app when published', function () {
 
     try {
         expect(file_exists($target))->toBeTrue('vendor:publish did not copy the Blade login stub');
-        expect(file_get_contents($target))->toContain('passwordlessLogin(');
+        expect(file_get_contents($target))->toContain('pwl-config');
     } finally {
         @unlink($target);
         @unlink(base_path('routes/passwordless-ui.php'));
