@@ -4,10 +4,10 @@
 [![GitHub Tests Action Status](https://img.shields.io/github/actions/workflow/status/webteractive/laravel-passwordless/run-tests.yml?branch=main&label=tests&style=flat-square)](https://github.com/webteractive/laravel-passwordless/actions?query=workflow%3Arun-tests+branch%3Amain)
 [![Total Downloads](https://img.shields.io/packagist/dt/webteractive/laravel-passwordless.svg?style=flat-square)](https://packagist.org/packages/webteractive/laravel-passwordless)
 
-Drop-in **passwordless authentication** for Laravel 11, 12, and 13 — **magic links** and **email
-login codes**. Headless by design: it ships secure JSON endpoints, events, and notifications, and
-stays out of the way of your frontend. An **optional, opt-in UI kit** is available when you want a
-login page without building one.
+Drop-in **passwordless authentication** for Laravel 11, 12, and 13 — **magic links**, **email
+login codes**, and **social (OAuth) login**. Headless by design: it ships secure JSON endpoints,
+events, and notifications, and stays out of the way of your frontend. An **optional, opt-in UI
+kit** is available when you want a login page without building one.
 
 ```http
 POST /auth/login-code          { "email": "ada@example.com" }        → 202 sent
@@ -25,9 +25,6 @@ POST /auth/login-code/verify   { "email": "ada@example.com", "code": "123456" } 
 - 🎨 **Optional UI kit** — publish a ready-made login page for Blade, React, or Vue (standalone or matched to an official starter kit). Nothing is routed unless you opt in.
 - 🧪 **Test-friendly** — `Passwordless::fake()` for assertion-only strategy stubs.
 - 🔐 **Session or API mode** — Laravel's session guard by default; a Sanctum-style `{ token, user }` in `api_mode`.
-
-> **Passkeys / WebAuthn?** Intentionally out of scope — Laravel Fortify ships first-class passkey
-> support. This package stays focused on magic links and login codes.
 
 ## Requirements
 
@@ -59,7 +56,7 @@ POST /auth/login-code/verify   { "email": "ada@example.com", "code": "123456" } 
 composer require webteractive/laravel-passwordless
 ```
 
-Publish and run the migration (one table, `passwordless_challenges`):
+Publish and run the migrations (`passwordless_challenges` + `passwordless_social_accounts`):
 
 ```bash
 php artisan vendor:publish --tag="passwordless-migrations"
@@ -84,8 +81,10 @@ By default the user must already exist (looked up by the `email` column). Set
 
 ## How it works
 
-- **One table.** `passwordless_challenges` holds ephemeral magic-link tokens and login codes
-  (hashed, single-use, TTL-bound). Prune it with `passwordless:prune`. No changes to your `users` table.
+- **Two tables, `users` untouched.** `passwordless_challenges` holds ephemeral magic-link tokens
+  and login codes (hashed, single-use, TTL-bound — prune with `passwordless:prune`).
+  `passwordless_social_accounts` persists linked OAuth identities (tokens encrypted at rest). Neither
+  touches your `users` table.
 - **Routes.** Registered under a configurable prefix (`auth` by default) inside the `web`
   middleware group, so session login and cookies work out of the box.
 - **Two modes.** Session mode (default) logs the user into Laravel's session guard; `api_mode`
