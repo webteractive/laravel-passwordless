@@ -16,12 +16,27 @@ use Symfony\Component\HttpFoundation\Response;
  */
 class AuthCompletion
 {
+    public function __construct(protected TwoFactor $twoFactor) {}
+
     public function complete(
         mixed $user,
         Request $request,
         bool $remember = false,
         bool $skipTwoFactor = false,
     ): ?Response {
+        // Checked BEFORE any login or token minting, so a user with a second
+        // factor can never be authenticated by this package alone. $skipTwoFactor
+        // exists solely for dev login; no strategy flow ever passes true.
+        if (! $skipTwoFactor && $this->twoFactor->required($user)) {
+            if (config('passwordless.api_mode')) {
+                // Fortify's challenge is session-based, so there is no token to
+                // issue here. Withholding it is the only fail-closed option.
+                return response()->json(['two_factor' => true], 409);
+            }
+
+            return $this->twoFactor->challenge($user, $request, $remember);
+        }
+
         if (config('passwordless.api_mode')) {
             $token = method_exists($user, 'createToken')
                 ? $user->createToken('passwordless')->plainTextToken
