@@ -5,15 +5,20 @@ namespace Webteractive\Passwordless\Http\Controllers\MagicCode;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
+use Symfony\Component\HttpFoundation\Response as SymfonyResponse;
 use Webteractive\Passwordless\Contracts\MagicCodeStrategy;
 use Webteractive\Passwordless\Strategies\MagicCode\MagicCodeGateDeniedException;
 use Webteractive\Passwordless\Strategies\MagicCode\MagicCodeInvalidException;
 use Webteractive\Passwordless\Strategies\MagicCode\MagicCodeLockedException;
+use Webteractive\Passwordless\Support\AuthCompletion;
 
 class VerifyController
 {
-    public function __invoke(Request $request, MagicCodeStrategy $strategy): JsonResponse|Response
-    {
+    public function __invoke(
+        Request $request,
+        MagicCodeStrategy $strategy,
+        AuthCompletion $completion,
+    ): JsonResponse|Response|SymfonyResponse {
         abort_unless((bool) config('passwordless.strategies.magic_code.enabled', false), 404);
 
         $data = $request->validate([
@@ -35,15 +40,9 @@ class VerifyController
             return response()->json(['message' => $e->getMessage()], 403);
         }
 
-        if (config('passwordless.api_mode')) {
-            $token = method_exists($user, 'createToken')
-                ? $user->createToken('passwordless')->plainTextToken
-                : null;
-
-            return response()->json(['token' => $token, 'user' => $user]);
+        if ($response = $completion->complete($user, $request)) {
+            return $response;
         }
-
-        auth(config('passwordless.guard'))->login($user);
 
         return response()->noContent();
     }

@@ -6,16 +6,23 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
+use Symfony\Component\HttpFoundation\Response as SymfonyResponse;
 use Webteractive\Passwordless\Contracts\MagicCodeStrategy;
 use Webteractive\Passwordless\Passwordless;
 use Webteractive\Passwordless\Strategies\MagicCode\MagicCodeDifferentBrowserException;
 use Webteractive\Passwordless\Strategies\MagicCode\MagicCodeGateDeniedException;
 use Webteractive\Passwordless\Strategies\MagicCode\MagicCodeInvalidException;
+use Webteractive\Passwordless\Support\AuthCompletion;
 
 class ConsumeController
 {
-    public function __invoke(Request $request, MagicCodeStrategy $strategy, Passwordless $passwordless, string $token): JsonResponse|RedirectResponse|Response
-    {
+    public function __invoke(
+        Request $request,
+        MagicCodeStrategy $strategy,
+        Passwordless $passwordless,
+        AuthCompletion $completion,
+        string $token,
+    ): JsonResponse|RedirectResponse|Response|SymfonyResponse {
         abort_unless((bool) config('passwordless.strategies.magic_code.enabled', false), 404);
 
         if (! $request->hasValidSignature()) {
@@ -32,18 +39,9 @@ class ConsumeController
             return response()->json(['message' => $e->getMessage()], 403);
         }
 
-        if (config('passwordless.api_mode')) {
-            $token = method_exists($user, 'createToken')
-                ? $user->createToken('passwordless')->plainTextToken
-                : null;
-
-            return response()->json([
-                'token' => $token,
-                'user' => $user,
-            ]);
+        if ($response = $completion->complete($user, $request)) {
+            return $response;
         }
-
-        auth(config('passwordless.guard'))->login($user);
 
         return redirect()->intended($passwordless->resolveRedirect($user, $request));
     }

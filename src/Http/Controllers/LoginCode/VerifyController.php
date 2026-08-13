@@ -5,15 +5,20 @@ namespace Webteractive\Passwordless\Http\Controllers\LoginCode;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
+use Symfony\Component\HttpFoundation\Response as SymfonyResponse;
 use Webteractive\Passwordless\Contracts\LoginCodeStrategy;
 use Webteractive\Passwordless\Strategies\LoginCode\LoginCodeGateDeniedException;
 use Webteractive\Passwordless\Strategies\LoginCode\LoginCodeInvalidException;
 use Webteractive\Passwordless\Strategies\LoginCode\LoginCodeLockedException;
+use Webteractive\Passwordless\Support\AuthCompletion;
 
 class VerifyController
 {
-    public function __invoke(Request $request, LoginCodeStrategy $strategy): JsonResponse|Response
-    {
+    public function __invoke(
+        Request $request,
+        LoginCodeStrategy $strategy,
+        AuthCompletion $completion,
+    ): JsonResponse|Response|SymfonyResponse {
         $data = $request->validate([
             'email' => ['required', 'email'],
             'code' => ['required', 'string'],
@@ -33,15 +38,9 @@ class VerifyController
             return response()->json(['message' => $e->getMessage()], 403);
         }
 
-        if (config('passwordless.api_mode')) {
-            $token = method_exists($user, 'createToken')
-                ? $user->createToken('passwordless')->plainTextToken
-                : null;
-
-            return response()->json(['token' => $token, 'user' => $user]);
+        if ($response = $completion->complete($user, $request)) {
+            return $response;
         }
-
-        auth(config('passwordless.guard'))->login($user);
 
         return response()->noContent();
     }
