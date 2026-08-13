@@ -20,6 +20,10 @@ POST /auth/login-code/verify   { "email": "ada@example.com", "code": "123456" } 
 - 🔢 **Login code** — short numeric OTP over email (SMS/WhatsApp/etc. via a pluggable channel contract).
 - 🪄 **magicCode** — one email with both a magic link *and* a code; sign in with either, first one wins. Opt-in.
 - 🌐 **Social login (OAuth)** — Google, GitHub, and any Socialite provider: verified-email account linking, auto-registration, and encrypted token storage. Install the driver + add keys → it works.
+- 🔐 **Honours starter-kit 2FA** — when a user has Laravel Fortify two-factor enabled, every flow hands off to Fortify's challenge instead of logging them in. Fortify stays optional; apps without it are unaffected.
+- 🔑 **2FA for password-less accounts** — an emailed identity-confirmation code satisfies Laravel's `password.confirm` gate, so users with no password can still turn 2FA on from a starter kit's settings page.
+- ☑️ **Remember me** — across every flow, persisted on the challenge so it survives the magic-link round trip.
+- 🧑‍💻 **Dev login** — an opt-in, local-only user picker for fast development sign-in, behind a three-condition guard with a permanent production denylist.
 - 🚧 **Domain limiting** — restrict which email domains may log in and/or auto-register, per strategy type.
 - 🛡️ **Secure by default** — hashing at rest, single-use, enumeration protection, lockout, resend cooldown, and burst throttling — all on out of the box.
 - 🔌 **Headless** — JSON endpoints, lifecycle events, a pre-auth gate, and an audit funnel. Bring any frontend.
@@ -41,6 +45,10 @@ POST /auth/login-code/verify   { "email": "ada@example.com", "code": "123456" } 
 - [Endpoints](#endpoints)
 - [HTTP responses](#http-responses)
 - [Social login](#social-login)
+- [Two-factor authentication (Fortify)](#two-factor-authentication-fortify)
+- [Enabling 2FA without a password](#enabling-2fa-without-a-password)
+- [Remember me](#remember-me)
+- [Dev login (user selection)](#dev-login-user-selection)
 - [Domain limiting](#domain-limiting)
 - [Optional UI kit](#optional-ui-kit)
 - [Security defaults](#security-defaults)
@@ -127,6 +135,16 @@ Registered under the `route_prefix` (`auth` by default), inside the `web` middle
 | `POST` | `/auth/magic-code/verify` | verify the magicCode code and sign in |
 | `GET`  | `/auth/social/{provider}/redirect` | start the OAuth flow |
 | `GET`  | `/auth/social/{provider}/callback` | handle the OAuth callback and sign in |
+| `POST` | `/auth/confirm/send` | email an identity-confirmation code (**auth required**) |
+| `GET`  | `/auth/dev-login` | list users for the dev picker (**local only, absent otherwise**) |
+| `POST` | `/auth/dev-login` | sign in the selected user (**local only, absent otherwise**) |
+
+The two `dev-login` routes are not registered unless the
+[dev-login guard](#dev-login-user-selection) passes — they `404` rather than `403` everywhere else.
+
+Every sign-in endpoint may instead hand off to Fortify's two-factor challenge when the user has 2FA
+enabled — see [Two-factor authentication](#two-factor-authentication-fortify). All of them also
+accept an optional `remember` flag; see [Remember me](#remember-me).
 
 Request endpoints always return `202` whether or not the email exists (enumeration protection).
 Login codes are numeric **strings**, default length **6** (configurable 6–10) — leading zeros are
@@ -239,6 +257,174 @@ use Webteractive\Passwordless\Facades\Passwordless;
 
 Passwordless::magicCode()->send('user@example.com');
 ```
+
+## Two-factor authentication (Fortify)
+
+The official Laravel starter kits ship TOTP two-factor authentication via **Laravel Fortify**. When
+a user has it enabled, this package **stops short of logging them in** and hands off to Fortify's
+own challenge — across every strategy: magic link, login code, magicCode, social, and the published
+embed controllers.
+
+Nothing to configure. Fortify is **not** a dependency of this package; detection is duck-typed and
+apps without it behave exactly as before:
+
+```php
+// What the package checks, in effect:
+class_exists(Laravel\Fortify\Fortify::class)
+    && in_array(TwoFactorAuthenticatable::class, class_uses_recursive($user))
+    && $user->hasEnabledTwoFactorAuthentication()
+```
+
+On a match it writes Fortify's own session contract (`login.id`, `login.remember`), dispatches
+`TwoFactorAuthenticationChallenged`, and redirects to `two-factor.login` — or returns
+`{"two_factor": true}` for JSON requests. Fortify's challenge controller then completes the login
+unchanged, including recovery codes and the remember flag.
+
+**Requirements and failure modes — all fail closed by design:**
+
+| Condition | Result |
+| --- | --- |
+| `config('passwordless.guard')` ≠ `config('fortify.guard')` | `TwoFactorGuardMismatchException` |
+| Fortify installed but its 2FA feature is off (`two-factor.login` route absent) | `TwoFactorChallengeUnavailableException` |
+| `api_mode` and the user has 2FA enabled | `409 {"two_factor": true}` — **no token issued** |
+
+The exceptions are deliberate. Falling through to `login()` in either case would silently bypass the
+user's second factor, so a misconfiguration is a loud error rather than a quiet downgrade.
+
+> **`passwordless.user_model` must be the same class as `auth.providers.users.model`.** Fortify
+> resolves the challenged user through the auth provider's model, so if the two differ, the model
+> Fortify loads may lack the `TwoFactorAuthenticatable` trait and recovery codes will fail.
+
+`api_mode` cannot complete the challenge — Fortify's is session-based. The package withholds the
+token instead of issuing one; complete the challenge over a session route, or handle 2FA yourself.
+
+You can also drive the handoff directly, which is what the published embed controllers do:
+
+```php
+if (Passwordless::twoFactor()->required($user)) {
+    return Passwordless::twoFactor()->challenge($user, $request, $remember);
+}
+```
+
+## Enabling 2FA without a password
+
+The starter kits gate *enabling* 2FA behind `Features::twoFactorAuthentication(['confirmPassword' => true])`,
+which routes through Laravel's `password.confirm` middleware. A passwordless-only user has no
+password hash, so they can never satisfy it — and therefore can never turn 2FA on.
+
+The fix is an emailed **identity confirmation** code that stands in for the password. Publish an
+embed UI kit (see [Optional UI kit](#optional-ui-kit)) and register the published provider in
+`bootstrap/providers.php`; it wires Fortify's own confirm-password flow to the package:
+
+```php
+Fortify::confirmPasswordsUsing(function ($user, $password) {
+    // Users who DO have a password keep the normal path.
+    if ($password && $user->getAuthPassword() && Auth::guard(config('fortify.guard'))->validate([
+        Fortify::username() => $user->{Fortify::username()},
+        'password' => $password,
+    ])) {
+        return true;
+    }
+
+    return Passwordless::confirmation()->verify($user, (string) $password);
+});
+```
+
+Because this reuses Fortify's endpoint, **Fortify** still stamps `auth.password_confirmed_at` on
+success — so `two-factor.enable`, `two-factor.confirm`, `two-factor.disable` and recovery-code
+regeneration all pass with no route overrides.
+
+`POST /auth/confirm/send` (auth required) emails the code. Confirmation challenges are stored in
+`passwordless_challenges` as `type = confirm` and pruned by `passwordless:prune` like any other.
+
+> **`Fortify::confirmPasswordsUsing()` is global.** The published callback already composes both
+> paths (real password *or* emailed code). If your app registers its own callback elsewhere, merge
+> them rather than registering twice — the last one wins.
+
+Its resend cooldown and lockout use a **separate key namespace** from login, deliberately: a login
+cooldown must not lock a user out of their own security settings, and failed confirmation attempts
+must not lock them out of logging in.
+
+```php
+'confirmation' => [
+    'enabled' => true,   // requires an authenticated user; emails only their own address
+    'length'  => 6,
+    'ttl'     => 10 * 60,
+],
+```
+
+If you would rather not have this at all, set `'confirmPassword' => false` in your Fortify features
+— but that drops the re-authentication guard around enabling and disabling 2FA entirely.
+
+## Remember me
+
+All flows accept a `remember` flag and issue a long-lived recaller cookie via the session guard.
+
+The wrinkle it solves: for magic links the checkbox is ticked when the email is **requested**, but
+the login happens in a **later** request when the link is clicked. So the flag is persisted on the
+challenge row and read back at consume time.
+
+| Flow | Captured at | Stored in | Read at |
+| --- | --- | --- | --- |
+| Magic link | send | `Challenge.metadata['remember']` | consume |
+| magicCode (link) | send | `Challenge.metadata['remember']` | consume |
+| Login code | send, overridable on verify | `Challenge.metadata['remember']` | verify |
+| magicCode (code) | send, overridable on verify | `Challenge.metadata['remember']` | verify |
+| Social | redirect | session `passwordless.remember` | callback |
+| Dev login | the POST itself | — | immediately |
+
+Where a verify request carries its own `remember` key, that value wins — it is the user's most
+recent expressed intent, in their own session.
+
+```php
+'remember' => [
+    'enabled' => true,   // false forces remember off everywhere, whatever clients send
+],
+```
+
+Ignored in `api_mode`: remember-me is a session-cookie concept with no meaning for a Sanctum token.
+Token lifetime is your `sanctum` config's business.
+
+## Dev login (user selection)
+
+> ### ⚠️ Read this before enabling
+>
+> This is a user picker that signs in **any** user with **no credential**. Enabled in a shared or
+> production environment it is a total authentication bypass. It exists for local development only.
+
+Off by default. Three **independent** conditions must all hold before the routes are registered
+*at all* — when any fails the endpoints do not exist and return `404`, rather than existing and
+returning `403`:
+
+1. `dev_login.enabled` is **strictly** `true` (a stray `"1"` does not count)
+2. the current `APP_ENV` is listed in `dev_login.environments`
+3. the app is not in production — a permanent denylist that `environments` **cannot** override
+
+```php
+'dev_login' => [
+    'enabled'      => false,      // deliberately a literal, not env() — see below
+    'environments' => ['local'],
+    'two_factor'   => false,      // dev logins skip the 2FA challenge by default
+    'limit'        => 50,
+],
+```
+
+There is intentionally **no `env()` default**, so no stray environment variable can switch this on —
+enabling it is a deliberate edit to your published config. If you want env control, change that line
+to `env('PASSWORDLESS_DEV_LOGIN', false)` yourself, and never set the variable outside local dev.
+
+| Endpoint | Purpose |
+| --- | --- |
+| `GET /auth/dev-login` | Lists at most `limit` users as `{id, name, email}` — optional `?q=` filters by email. Never returns password hashes, remember tokens, or 2FA secrets. |
+| `POST /auth/dev-login` | Signs in `{user, remember?}` through the same seam as a real login. |
+
+Dev logins fire `UserAuthenticated('dev_login', $user)` and pass through
+[`Passwordless::recordUsing()`](#audit-funnel), so your audit hook sees them as their own strategy
+rather than as a magic link. They **bypass** the 2FA challenge by default — a shortcut that demands
+a TOTP defeats its purpose. Set `dev_login.two_factor => true` to exercise that path instead.
+
+The published UI stubs render the picker only when the endpoint is reachable, so a stub that ships to
+production is inert: the route is absent and the control never appears.
 
 ## Domain limiting
 
@@ -425,6 +611,21 @@ Passwordless::redirectUsing(fn ($user, $request) =>
 
 > The headless magic-link and login-code endpoints return `204`/JSON and never
 > redirect, so this hook does not apply to them — your frontend navigates itself.
+
+### Two-factor and identity confirmation
+
+Both are public API, safe to call whether or not Fortify is installed:
+
+```php
+Passwordless::twoFactor()->required($user);                    // bool — false without Fortify
+Passwordless::twoFactor()->challenge($user, $request, $remember); // Response — hands off to Fortify
+
+Passwordless::confirmation()->send($user);                     // emails a confirmation code
+Passwordless::confirmation()->verify($user, $code);            // bool — Fortify-callback shaped
+```
+
+See [Two-factor authentication](#two-factor-authentication-fortify) and
+[Enabling 2FA without a password](#enabling-2fa-without-a-password).
 
 ### Custom login-code channels
 
