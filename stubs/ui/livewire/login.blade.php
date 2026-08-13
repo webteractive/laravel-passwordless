@@ -68,6 +68,15 @@
                                class="w-full rounded-lg border border-neutral-300 bg-white px-3.5 py-2.5 text-sm shadow-sm outline-none transition placeholder:text-neutral-400 focus:border-neutral-900 focus:ring-2 focus:ring-neutral-900/10 disabled:opacity-60 dark:border-neutral-700 dark:bg-neutral-950">
                     </div>
 
+                    {{-- Chosen here, at send time: the package stores the flag on
+                         the challenge, so it still applies when the emailed code
+                         or link is used on a later request. --}}
+                    <label class="flex items-center gap-2 text-sm text-neutral-600 dark:text-neutral-400">
+                        <input type="checkbox" id="pwl-remember" name="remember"
+                               class="rounded border-neutral-300 text-neutral-900 focus:ring-neutral-900/20 dark:border-neutral-700 dark:bg-neutral-950">
+                        Remember me
+                    </label>
+
                     @if ($codeEnabled)
                         <button type="submit" id="pwl-send-code"
                                 class="inline-flex w-full items-center justify-center rounded-lg bg-neutral-900 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-neutral-800 focus:outline-none focus:ring-2 focus:ring-neutral-900/20 active:translate-y-px disabled:opacity-60 dark:bg-white dark:text-neutral-900 dark:hover:bg-neutral-200">
@@ -147,6 +156,7 @@
                 stepCode: document.getElementById('pwl-step-code'),
                 stepSent: document.getElementById('pwl-step-sent'),
                 email: document.getElementById('pwl-email'),
+                remember: document.getElementById('pwl-remember'),
                 sendLink: document.getElementById('pwl-send-link'),
                 verify: document.getElementById('pwl-verify'),
                 toEmail: document.getElementById('pwl-to-email'),
@@ -166,6 +176,9 @@
                     : step === 'sent' ? 'A sign-in link is on its way.'
                     : 'Enter your email to receive a one-time code.';
             }
+
+            // Read at submit time so the box's final state is what gets sent.
+            function remember() { return els.remember ? els.remember.checked : false; }
 
             function post(url, body) {
                 return fetch(url, {
@@ -201,7 +214,7 @@
                 if (e) e.preventDefault();
                 if (!cfg.endpoints.sendCode) return;
                 showError('');
-                post(cfg.endpoints.sendCode, { email: els.email.value }).then(function (res) {
+                post(cfg.endpoints.sendCode, { email: els.email.value, remember: remember() }).then(function (res) {
                     return res.json().catch(function () { return {}; }).then(function (data) {
                         if (res.status === 202) { setStep('code'); resetDigits(); if (boxes[0]) boxes[0].focus(); return; }
                         showError(messageFor(res, data, 'Something went wrong. Try again.'));
@@ -212,7 +225,7 @@
             function requestLink() {
                 if (!cfg.endpoints.sendLink) return;
                 showError('');
-                post(cfg.endpoints.sendLink, { email: els.email.value }).then(function (res) {
+                post(cfg.endpoints.sendLink, { email: els.email.value, remember: remember() }).then(function (res) {
                     return res.json().catch(function () { return {}; }).then(function (data) {
                         if (res.status === 202) { els.sentEmail.textContent = els.email.value; setStep('sent'); return; }
                         showError(messageFor(res, data, 'Something went wrong. Try again.'));
@@ -224,7 +237,7 @@
                 if (e) e.preventDefault();
                 if (!cfg.endpoints.verifyCode) return;
                 showError('');
-                post(cfg.endpoints.verifyCode, { email: els.email.value, code: code() }).then(function (res) {
+                post(cfg.endpoints.verifyCode, { email: els.email.value, code: code(), remember: remember() }).then(function (res) {
                     if (res.status === 204 || res.status === 200) { window.location.assign(cfg.redirect); return; }
                     return res.json().catch(function () { return {}; }).then(function (data) {
                         showError(messageFor(res, data, 'Invalid or expired code.'));

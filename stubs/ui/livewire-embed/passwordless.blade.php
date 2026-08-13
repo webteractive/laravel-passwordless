@@ -83,6 +83,11 @@
                     placeholder="email@example.com"
                 />
 
+                {{-- Chosen here, at send time. The package stores it on the
+                     challenge so it still applies when the emailed code or link
+                     is used on a later request. --}}
+                <flux:checkbox name="remember" value="1" :label="__('Remember me')" />
+
                 @if ($codeEnabled)
                     <flux:button variant="primary" type="submit" class="w-full">
                         {{ __('Email me a code') }}

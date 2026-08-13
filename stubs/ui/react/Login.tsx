@@ -61,6 +61,9 @@ export default function Login({
 }: LoginProps) {
     const [step, setStep] = useState<Step>('email');
     const [email, setEmail] = useState('');
+    // Chosen at send time; the package stores it on the challenge so it still
+    // applies when the emailed code or link is used on a later request.
+    const [remember, setRemember] = useState(false);
     const [digits, setDigits] = useState<string[]>(() => Array(codeLength).fill(''));
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
@@ -91,7 +94,7 @@ export default function Login({
         setError('');
         setLoading(true);
         try {
-            const res = await postJson(endpoints.sendCode, { email });
+            const res = await postJson(endpoints.sendCode, { email, remember });
             const data = await res.json().catch(() => ({}));
             if (res.status === 202) {
                 setDigits(Array(codeLength).fill(''));
@@ -111,7 +114,7 @@ export default function Login({
         setError('');
         setLoading(true);
         try {
-            const res = await postJson(endpoints.sendLink, { email });
+            const res = await postJson(endpoints.sendLink, { email, remember });
             const data = await res.json().catch(() => ({}));
             if (res.status === 202) {
                 setStep('sent');
@@ -130,7 +133,7 @@ export default function Login({
         setError('');
         setLoading(true);
         try {
-            const res = await postJson(endpoints.verifyCode, { email, code });
+            const res = await postJson(endpoints.verifyCode, { email, code, remember });
             if (res.status === 204 || res.status === 200) {
                 window.location.assign(redirect);
                 return;
@@ -223,6 +226,17 @@ export default function Login({
                                     className="w-full rounded-lg border border-neutral-300 bg-white px-3.5 py-2.5 text-sm shadow-sm outline-none transition placeholder:text-neutral-400 focus:border-neutral-900 focus:ring-2 focus:ring-neutral-900/10 disabled:opacity-60 dark:border-neutral-700 dark:bg-neutral-950 dark:focus:border-neutral-100"
                                 />
                             </div>
+
+                            <label className="flex items-center gap-2 text-sm text-neutral-600 dark:text-neutral-400">
+                                <input
+                                    type="checkbox"
+                                    checked={remember}
+                                    disabled={loading}
+                                    onChange={(e) => setRemember(e.target.checked)}
+                                    className="rounded border-neutral-300 text-neutral-900 focus:ring-neutral-900/20 dark:border-neutral-700 dark:bg-neutral-950"
+                                />
+                                Remember me
+                            </label>
 
                             {codeEnabled && (
                                 <button type="submit" disabled={loading} className={primaryBtn}>

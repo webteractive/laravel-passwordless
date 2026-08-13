@@ -14,6 +14,7 @@ import { Head, useForm } from '@inertiajs/react';
 import { FormEvent } from 'react';
 import InputError from '@/components/input-error';
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 
@@ -32,7 +33,9 @@ type Props = {
 };
 
 export default function Passwordless({ step, email, status, codeEnabled, linkEnabled, routes }: Props) {
-    const emailForm = useForm({ email: email ?? '' });
+    // `remember` is chosen at send time. The package stores it on the challenge,
+    // so it still applies when the emailed code or link is used later.
+    const emailForm = useForm({ email: email ?? '', remember: false });
     const codeForm = useForm({ code: '' });
 
     const submitCode = (e: FormEvent) => {
@@ -95,6 +98,16 @@ export default function Passwordless({ step, email, status, codeEnabled, linkEna
                             onChange={(e) => emailForm.setData('email', e.target.value)}
                         />
                         <InputError message={emailForm.errors.email} />
+                    </div>
+
+                    <div className="flex items-center space-x-3">
+                        <Checkbox
+                            id="remember"
+                            name="remember"
+                            checked={emailForm.data.remember}
+                            onClick={() => emailForm.setData('remember', !emailForm.data.remember)}
+                        />
+                        <Label htmlFor="remember">Remember me</Label>
                     </div>
 
                     {codeEnabled && (

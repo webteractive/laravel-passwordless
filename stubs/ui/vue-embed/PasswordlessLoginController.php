@@ -26,6 +26,7 @@ use Webteractive\Passwordless\Strategies\LoginCode\LoginCodeInvalidException;
 use Webteractive\Passwordless\Strategies\LoginCode\LoginCodeLockedException;
 use Webteractive\Passwordless\Strategies\LoginCode\LoginCodeResendCooldownException;
 use Webteractive\Passwordless\Strategies\MagicLink\MagicLinkResendCooldownException;
+use Webteractive\Passwordless\Support\RememberFlag;
 
 class PasswordlessLoginController extends Controller
 {
@@ -50,7 +51,10 @@ class PasswordlessLoginController extends Controller
 
     public function requestCode(Request $request): RedirectResponse
     {
-        $data = $request->validate(['email' => ['required', 'email']]);
+        $data = $request->validate([
+            'email' => ['required', 'email'],
+            'remember' => ['nullable', 'boolean'],
+        ]);
 
         try {
             Passwordless::loginCode()->send($data['email'], $this->context($request));
@@ -83,7 +87,11 @@ class PasswordlessLoginController extends Controller
         }
 
         $request->session()->forget('passwordless.email');
-        Auth::guard(config('passwordless.guard'))->login($user);
+        // The checkbox was ticked on the email step, one request earlier — so read
+        // the flag the package stashed from the challenge, not this request.
+        $remember = app(RememberFlag::class)->resolve($request);
+
+        Auth::guard(config('passwordless.guard'))->login($user, $remember);
         $request->session()->regenerate();
 
         // Honors a middleware-set intended URL first, then the package's
@@ -93,7 +101,10 @@ class PasswordlessLoginController extends Controller
 
     public function requestLink(Request $request): RedirectResponse
     {
-        $data = $request->validate(['email' => ['required', 'email']]);
+        $data = $request->validate([
+            'email' => ['required', 'email'],
+            'remember' => ['nullable', 'boolean'],
+        ]);
 
         try {
             Passwordless::magicLink()->send($data['email'], $this->context($request));
@@ -113,6 +124,10 @@ class PasswordlessLoginController extends Controller
 
     protected function context(Request $request): array
     {
-        return ['ip' => $request->ip(), 'user_agent' => $request->userAgent()];
+        return [
+            'ip' => $request->ip(),
+            'user_agent' => $request->userAgent(),
+            'remember' => $request->boolean('remember'),
+        ];
     }
 }

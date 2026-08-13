@@ -37,6 +37,9 @@ type Step = 'email' | 'code' | 'sent';
 
 const step = ref<Step>('email');
 const email = ref('');
+// Chosen at send time; the package stores it on the challenge so it still
+// applies when the emailed code or link is used on a later request.
+const remember = ref(false);
 const digits = ref<string[]>(Array(props.codeLength).fill(''));
 const error = ref('');
 const loading = ref(false);
@@ -85,7 +88,7 @@ async function requestCode() {
     error.value = '';
     loading.value = true;
     try {
-        const res = await postJson(props.endpoints.sendCode, { email: email.value });
+        const res = await postJson(props.endpoints.sendCode, { email: email.value, remember: remember.value });
         const data = await res.json().catch(() => ({}));
         if (res.status === 202) {
             digits.value = Array(props.codeLength).fill('');
@@ -105,7 +108,7 @@ async function requestLink() {
     error.value = '';
     loading.value = true;
     try {
-        const res = await postJson(props.endpoints.sendLink, { email: email.value });
+        const res = await postJson(props.endpoints.sendLink, { email: email.value, remember: remember.value });
         const data = await res.json().catch(() => ({}));
         if (res.status === 202) {
             step.value = 'sent';
@@ -124,7 +127,7 @@ async function verifyCode(code: string) {
     error.value = '';
     loading.value = true;
     try {
-        const res = await postJson(props.endpoints.verifyCode, { email: email.value, code });
+        const res = await postJson(props.endpoints.verifyCode, { email: email.value, code, remember: remember.value });
         if (res.status === 204 || res.status === 200) {
             window.location.assign(props.redirect);
             return;
@@ -218,6 +221,16 @@ const primaryBtn =
                             class="w-full rounded-lg border border-neutral-300 bg-white px-3.5 py-2.5 text-sm shadow-sm outline-none transition placeholder:text-neutral-400 focus:border-neutral-900 focus:ring-2 focus:ring-neutral-900/10 disabled:opacity-60 dark:border-neutral-700 dark:bg-neutral-950 dark:focus:border-neutral-100"
                         />
                     </div>
+
+                    <label class="flex items-center gap-2 text-sm text-neutral-600 dark:text-neutral-400">
+                        <input
+                            v-model="remember"
+                            type="checkbox"
+                            :disabled="loading"
+                            class="rounded border-neutral-300 text-neutral-900 focus:ring-neutral-900/20 dark:border-neutral-700 dark:bg-neutral-950"
+                        />
+                        Remember me
+                    </label>
 
                     <button v-if="codeEnabled" type="submit" :disabled="loading" :class="primaryBtn">
                         {{ loading ? 'Sending…' : 'Send me a code' }}
