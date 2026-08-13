@@ -3,6 +3,7 @@
 namespace Webteractive\Passwordless\Tests;
 
 use Illuminate\Database\Eloquent\Factories\Factory;
+use Illuminate\Routing\RouteCollection;
 use Laravel\Fortify\Features;
 use Laravel\Fortify\FortifyServiceProvider;
 use Orchestra\Testbench\TestCase as Orchestra;
@@ -43,6 +44,33 @@ class TestCase extends Orchestra
         config()->set('fortify.features', [
             Features::twoFactorAuthentication(['confirm' => true, 'confirmPassword' => true]),
         ]);
+    }
+
+    /**
+     * Re-register the package's route file against the CURRENT config.
+     *
+     * Routes are registered once at boot, but the dev-login guard is evaluated
+     * at registration time by design — so a test that changes its config has to
+     * re-run the file to observe the effect. The package's own routes are
+     * dropped first so re-registration does not leave duplicates behind.
+     */
+    public function reloadPasswordlessRoutes(): void
+    {
+        $router = $this->app['router'];
+
+        $kept = new RouteCollection;
+
+        foreach ($router->getRoutes() as $route) {
+            if (! str_starts_with((string) $route->getName(), 'passwordless.')) {
+                $kept->add($route);
+            }
+        }
+
+        $router->setRoutes($kept);
+
+        require __DIR__.'/../routes/web.php';
+
+        $router->getRoutes()->refreshNameLookups();
     }
 
     protected function defineDatabaseMigrations()

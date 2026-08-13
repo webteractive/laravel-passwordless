@@ -58,6 +58,35 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Dev Login (user selection)
+    |--------------------------------------------------------------------------
+    |
+    | DANGER: a user picker that signs in ANY user with no credential. Three
+    | independent conditions must ALL hold before the routes are registered at
+    | all: `enabled` is strictly true, the current APP_ENV is listed in
+    | `environments`, and the app is not in production (a permanent denylist
+    | that `environments` cannot override). When any check fails the endpoints
+    | do not exist — they 404 rather than 403.
+    |
+    | Enabling is a deliberate edit to THIS file — there is intentionally no
+    | env() default, so no stray environment variable can switch it on. If you
+    | want env control in your own app, change the line below to
+    | env('PASSWORDLESS_DEV_LOGIN', false) yourself, and never set that variable
+    | in a shared or production environment.
+    */
+    'dev_login' => [
+        'enabled' => false,
+        'environments' => ['local'],
+
+        // Dev logins skip the Fortify 2FA challenge by default — a shortcut that
+        // demands a TOTP defeats its purpose. Set true to exercise that path.
+        'two_factor' => false,
+
+        'limit' => 50,
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Security
     |--------------------------------------------------------------------------
     */
