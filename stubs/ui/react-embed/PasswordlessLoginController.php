@@ -18,6 +18,7 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 use Inertia\Response;
 use Symfony\Component\HttpFoundation\Response as SymfonyResponse;
@@ -41,6 +42,17 @@ class PasswordlessLoginController extends Controller
             'status' => $request->session()->get('status'),
             'codeEnabled' => (bool) config('passwordless.strategies.login_code.enabled', true),
             'linkEnabled' => (bool) config('passwordless.strategies.magic_link.enabled', true),
+            // Dev-only user picker. The route exists only when the package's
+            // dev_login guard passes, so this is an empty list in production and
+            // the page renders nothing.
+            'devUsers' => Route::has('passwordless.dev-login.index')
+                ? config('passwordless.user_model')::query()
+                    ->limit(config('passwordless.dev_login.limit', 50))
+                    ->get(['id', config('passwordless.user_email_column', 'email')])
+                : [],
+            'devLoginRoute' => Route::has('passwordless.dev-login.index')
+                ? route('passwordless.dev-login.store')
+                : null,
             'routes' => [
                 'request' => route('passwordless.request'),
                 'verify' => route('passwordless.verify'),

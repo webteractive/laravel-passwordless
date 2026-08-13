@@ -25,12 +25,17 @@ defineOptions({
     },
 });
 
+type DevUser = { id: number | string; email: string };
+
 const props = defineProps<{
     step: 'email' | 'code';
     email?: string;
     status?: string;
     codeEnabled: boolean;
     linkEnabled: boolean;
+    // Empty unless the package's dev_login guard passed — production sees [].
+    devUsers: DevUser[];
+    devLoginRoute: string | null;
     routes: {
         request: string;
         verify: string;
@@ -43,10 +48,12 @@ const props = defineProps<{
 // it still applies when the emailed code or link is used later.
 const emailForm = useForm({ email: props.email ?? '', remember: false });
 const codeForm = useForm({ code: '' });
+const devForm = useForm({ user: props.devUsers[0]?.id ?? '' });
 
 const submitCode = () => emailForm.post(props.routes.request);
 const submitLink = () => emailForm.post(props.routes.link);
 const submitVerify = () => codeForm.post(props.routes.verify);
+const devSignIn = () => props.devLoginRoute && devForm.post(props.devLoginRoute);
 </script>
 
 <template>
@@ -114,5 +121,19 @@ const submitVerify = () => codeForm.post(props.routes.verify);
         >
             Email me a magic link
         </Button>
+
+        <div v-if="devLoginRoute && devUsers.length" class="flex flex-col gap-2 border-t pt-4">
+            <Label for="devUser">Dev sign-in</Label>
+            <select
+                id="devUser"
+                v-model="devForm.user"
+                class="h-9 rounded-md border border-input bg-transparent px-3 text-sm"
+            >
+                <option v-for="u in devUsers" :key="u.id" :value="u.id">{{ u.email }}</option>
+            </select>
+            <Button type="button" variant="outline" class="w-full" @click="devSignIn">
+                Sign in as selected user
+            </Button>
+        </div>
     </form>
 </template>

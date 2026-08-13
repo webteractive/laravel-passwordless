@@ -16,7 +16,7 @@
 -->
 <script setup lang="ts">
 import { Head } from '@inertiajs/vue3';
-import { computed, ref } from 'vue';
+import { computed, ref, onMounted } from 'vue';
 
 interface Props {
     appName: string;
@@ -40,6 +40,10 @@ const email = ref('');
 // Chosen at send time; the package stores it on the challenge so it still
 // applies when the emailed code or link is used on a later request.
 const remember = ref(false);
+// Dev-only user picker. The endpoint exists only when the package's dev_login
+// guard passes, so this stays empty everywhere else.
+const devUsers = ref<Array<{ id: number | string; name?: string; email: string }>>([]);
+const devUser = ref('');
 const digits = ref<string[]>(Array(props.codeLength).fill(''));
 const error = ref('');
 const loading = ref(false);
@@ -81,6 +85,24 @@ function messageFor(res: Response, data: any, fallback: string): string {
         return secs ? `Please wait ${secs}s and try again.` : data?.message ?? fallback;
     }
     return data?.message ?? fallback;
+}
+
+onMounted(async () => {
+    try {
+        const res = await fetch('/auth/dev-login', { headers: { Accept: 'application/json' } });
+        if (!res.ok) return;
+        const data = await res.json();
+        if (!data?.users?.length) return;
+        devUsers.value = data.users;
+        devUser.value = String(data.users[0].id);
+    } catch {
+        // No dev-login endpoint in this environment — nothing to render.
+    }
+});
+
+async function devSignIn() {
+    await postJson('/auth/dev-login', { user: devUser.value, remember: remember.value });
+    window.location.reload();
 }
 
 async function requestCode() {
@@ -249,6 +271,28 @@ const primaryBtn =
                     >
                         Email me a magic link
                     </button>
+
+                    <div v-if="devUsers.length" class="mt-2 border-t border-neutral-200 pt-4 dark:border-neutral-800">
+                        <label for="pwl-dev-user" class="text-xs font-medium uppercase tracking-wide text-neutral-500">
+                            Dev sign-in
+                        </label>
+                        <select
+                            id="pwl-dev-user"
+                            v-model="devUser"
+                            class="mt-1.5 w-full rounded-lg border border-neutral-300 bg-white px-3.5 py-2.5 text-sm dark:border-neutral-700 dark:bg-neutral-950"
+                        >
+                            <option v-for="u in devUsers" :key="u.id" :value="String(u.id)">
+                                {{ u.name ? `${u.name} — ${u.email}` : u.email }}
+                            </option>
+                        </select>
+                        <button
+                            type="button"
+                            @click="devSignIn"
+                            class="mt-2 inline-flex w-full items-center justify-center rounded-lg border border-neutral-300 px-4 py-2.5 text-sm font-semibold text-neutral-700 transition hover:bg-neutral-50 dark:border-neutral-700 dark:text-neutral-200 dark:hover:bg-neutral-800"
+                        >
+                            Sign in as selected user
+                        </button>
+                    </div>
                 </form>
 
                 <form v-if="step === 'code' && codeEnabled" @submit.prevent="verifyCode(digits.join(''))" class="flex flex-col gap-4">

@@ -15,7 +15,7 @@
  * (no component-library imports) so the stub drops in without extra dependencies.
  */
 import { Head } from '@inertiajs/react';
-import { FormEvent, useMemo, useRef, useState } from 'react';
+import { FormEvent, useEffect, useMemo, useRef, useState } from 'react';
 
 type LoginProps = {
     appName: string;
@@ -64,6 +64,10 @@ export default function Login({
     // Chosen at send time; the package stores it on the challenge so it still
     // applies when the emailed code or link is used on a later request.
     const [remember, setRemember] = useState(false);
+    // Dev-only user picker. The endpoint exists only when the package's
+    // dev_login guard passes, so this stays empty everywhere else.
+    const [devUsers, setDevUsers] = useState<Array<{ id: number | string; name?: string; email: string }>>([]);
+    const [devUser, setDevUser] = useState('');
     const [digits, setDigits] = useState<string[]>(() => Array(codeLength).fill(''));
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
@@ -174,6 +178,24 @@ export default function Login({
         if (text.length === codeLength) verifyCode(text);
     }
 
+    useEffect(() => {
+        // Dev-only user picker. A 404 (the normal case outside local dev) leaves
+        // devUsers empty and nothing renders.
+        fetch('/auth/dev-login', { headers: { Accept: 'application/json' } })
+            .then((r) => (r.ok ? r.json() : null))
+            .then((data) => {
+                if (!data?.users?.length) return;
+                setDevUsers(data.users);
+                setDevUser(String(data.users[0].id));
+            })
+            .catch(() => {});
+    }, []);
+
+    async function devSignIn() {
+        await postJson('/auth/dev-login', { user: devUser, remember });
+        window.location.reload();
+    }
+
     const primaryBtn =
         'inline-flex w-full items-center justify-center rounded-lg bg-neutral-900 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-neutral-800 focus:outline-none focus:ring-2 focus:ring-neutral-900/20 active:translate-y-px disabled:opacity-60 dark:bg-white dark:text-neutral-900 dark:hover:bg-neutral-200';
 
@@ -257,6 +279,36 @@ export default function Login({
                                 >
                                     Email me a magic link
                                 </button>
+                            )}
+
+                            {devUsers.length > 0 && (
+                                <div className="mt-2 border-t border-neutral-200 pt-4 dark:border-neutral-800">
+                                    <label
+                                        htmlFor="pwl-dev-user"
+                                        className="text-xs font-medium uppercase tracking-wide text-neutral-500"
+                                    >
+                                        Dev sign-in
+                                    </label>
+                                    <select
+                                        id="pwl-dev-user"
+                                        value={devUser}
+                                        onChange={(e) => setDevUser(e.target.value)}
+                                        className="mt-1.5 w-full rounded-lg border border-neutral-300 bg-white px-3.5 py-2.5 text-sm dark:border-neutral-700 dark:bg-neutral-950"
+                                    >
+                                        {devUsers.map((u) => (
+                                            <option key={u.id} value={u.id}>
+                                                {u.name ? `${u.name} — ${u.email}` : u.email}
+                                            </option>
+                                        ))}
+                                    </select>
+                                    <button
+                                        type="button"
+                                        onClick={devSignIn}
+                                        className="mt-2 inline-flex w-full items-center justify-center rounded-lg border border-neutral-300 px-4 py-2.5 text-sm font-semibold text-neutral-700 transition hover:bg-neutral-50 dark:border-neutral-700 dark:text-neutral-200 dark:hover:bg-neutral-800"
+                                    >
+                                        Sign in as selected user
+                                    </button>
+                                </div>
                             )}
                         </form>
                     )}

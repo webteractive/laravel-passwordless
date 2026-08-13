@@ -96,6 +96,19 @@
                     @endif
                 </form>
 
+                {{-- Dev-only user picker. The endpoint exists only when the
+                     package's dev_login guard passes, so this stays hidden in
+                     any environment where it does not. --}}
+                <div id="pwl-dev" hidden class="mt-6 border-t border-neutral-200 pt-4 dark:border-neutral-800">
+                    <label for="pwl-dev-user" class="text-xs font-medium uppercase tracking-wide text-neutral-500">Dev sign-in</label>
+                    <select id="pwl-dev-user"
+                            class="mt-1.5 w-full rounded-lg border border-neutral-300 bg-white px-3.5 py-2.5 text-sm dark:border-neutral-700 dark:bg-neutral-950"></select>
+                    <button type="button" id="pwl-dev-go"
+                            class="mt-2 inline-flex w-full items-center justify-center rounded-lg border border-neutral-300 px-4 py-2.5 text-sm font-semibold text-neutral-700 transition hover:bg-neutral-50 dark:border-neutral-700 dark:text-neutral-200 dark:hover:bg-neutral-800">
+                        Sign in as selected user
+                    </button>
+                </div>
+
                 {{-- Step: code --}}
                 @if ($codeEnabled)
                     <form id="pwl-step-code" hidden class="flex flex-col gap-4">
@@ -179,6 +192,31 @@
 
             // Read at submit time so the box's final state is what gets sent.
             function remember() { return els.remember ? els.remember.checked : false; }
+
+            // Dev-only user picker. A 404 (the normal case outside local dev)
+            // leaves the block hidden and nothing is rendered.
+            fetch('/auth/dev-login', { headers: { Accept: 'application/json' } })
+                .then(function (r) { return r.ok ? r.json() : null; })
+                .then(function (data) {
+                    if (!data || !data.users || !data.users.length) return;
+
+                    var select = document.getElementById('pwl-dev-user');
+                    select.innerHTML = data.users.map(function (u) {
+                        return '<option value="' + u.id + '">' + (u.name ? u.name + ' — ' : '') + u.email + '</option>';
+                    }).join('');
+                    document.getElementById('pwl-dev').hidden = false;
+                })
+                .catch(function () {});
+
+            var devGo = document.getElementById('pwl-dev-go');
+            if (devGo) {
+                devGo.addEventListener('click', function () {
+                    post('/auth/dev-login', {
+                        user: document.getElementById('pwl-dev-user').value,
+                        remember: remember(),
+                    }).then(function () { window.location.reload(); });
+                });
+            }
 
             function post(url, body) {
                 return fetch(url, {
