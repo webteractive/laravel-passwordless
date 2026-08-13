@@ -8,6 +8,9 @@ use Workbench\App\Models\TwoFactorUser;
 
 beforeEach(function () {
     config()->set('passwordless.user_model', TwoFactorUser::class);
+    // Fortify resolves the challenged user through the AUTH provider's model, so
+    // the two must agree — as they do in a real starter kit.
+    config()->set('auth.providers.users.model', TwoFactorUser::class);
     config()->set('passwordless.strategies.magic_link.same_browser', false);
 });
 
