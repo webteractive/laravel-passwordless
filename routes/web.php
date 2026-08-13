@@ -1,6 +1,7 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
+use Webteractive\Passwordless\Http\Controllers\Confirmation\SendController as ConfirmationSendController;
 use Webteractive\Passwordless\Http\Controllers\LoginCode\SendController as LoginCodeSendController;
 use Webteractive\Passwordless\Http\Controllers\LoginCode\VerifyController as LoginCodeVerifyController;
 use Webteractive\Passwordless\Http\Controllers\MagicCode\ConsumeController as MagicCodeConsumeController;
@@ -50,6 +51,14 @@ Route::group([
     Route::post('magic-code/verify', MagicCodeVerifyController::class)
         ->middleware(PasswordlessThrottle::class.':verify')
         ->name('passwordless.magic-code.verify');
+
+    // Identity confirmation — re-verifies an already-authenticated user with an
+    // emailed code so a password-less account can satisfy `password.confirm`.
+    // Verification itself happens inside Fortify's confirm-password endpoint via
+    // Fortify::confirmPasswordsUsing(); only the send lives here.
+    Route::post('confirm/send', ConfirmationSendController::class)
+        ->middleware('auth')
+        ->name('passwordless.confirm.send');
 
     // Social (OAuth via Socialite). Only providers listed in config get a
     // working driver; unknown/disabled providers 404 in the controllers.

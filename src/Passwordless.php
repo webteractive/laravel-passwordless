@@ -11,6 +11,7 @@ use Webteractive\Passwordless\Contracts\MagicLinkStrategy;
 use Webteractive\Passwordless\Contracts\SocialStrategy;
 use Webteractive\Passwordless\Support\AuthEvent;
 use Webteractive\Passwordless\Support\Decision;
+use Webteractive\Passwordless\Support\IdentityConfirmation;
 use Webteractive\Passwordless\Support\TwoFactor;
 use Webteractive\Passwordless\Testing\PasswordlessFake;
 
@@ -55,6 +56,15 @@ class Passwordless
     public function twoFactor(): TwoFactor
     {
         return $this->container->make(TwoFactor::class);
+    }
+
+    /**
+     * Emailed identity re-confirmation, used to satisfy Laravel's
+     * `password.confirm` middleware for accounts that have no password.
+     */
+    public function confirmation(): IdentityConfirmation
+    {
+        return $this->container->make(IdentityConfirmation::class);
     }
 
     /**

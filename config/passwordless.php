@@ -42,6 +42,22 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Identity Confirmation
+    |--------------------------------------------------------------------------
+    |
+    | Re-confirms an authenticated user with an emailed code so a password-less
+    | account can satisfy Laravel's `password.confirm` middleware — the gate in
+    | front of Fortify's two-factor settings. Its cooldown/lockout keys are
+    | separate from login, so neither can lock a user out of the other.
+    */
+    'confirmation' => [
+        'enabled' => true,
+        'length' => 6,
+        'ttl' => 10 * 60,
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Security
     |--------------------------------------------------------------------------
     */

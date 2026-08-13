@@ -22,6 +22,13 @@ return [
         'outro' => 'The code expires in :minutes minute(s). If you didn\'t request this, you can ignore the email.',
     ],
 
+    'confirmation' => [
+        'subject' => 'Confirm it\'s you — :app',
+        'greeting' => 'Confirm your identity',
+        'intro' => 'Use this code to confirm it\'s you before changing your security settings on :app:',
+        'outro' => 'The code expires in :minutes minute(s). If you didn\'t request this, you can ignore the email.',
+    ],
+
     'magic_code' => [
         'subject' => 'Your :app sign-in link and code',
         'greeting' => 'Hello!',
