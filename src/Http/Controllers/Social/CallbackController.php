@@ -12,6 +12,7 @@ use Webteractive\Passwordless\Passwordless;
 use Webteractive\Passwordless\Strategies\Social\SocialGateDeniedException;
 use Webteractive\Passwordless\Strategies\Social\SocialProviderNotEnabledException;
 use Webteractive\Passwordless\Support\AuthCompletion;
+use Webteractive\Passwordless\Support\RememberFlag;
 
 class CallbackController
 {
@@ -21,6 +22,7 @@ class CallbackController
         SocialStrategy $strategy,
         Passwordless $passwordless,
         AuthCompletion $completion,
+        RememberFlag $flag,
     ): JsonResponse|RedirectResponse|SymfonyResponse {
         try {
             $user = $strategy->callback($provider, $request);
@@ -34,7 +36,10 @@ class CallbackController
             return response()->json(['message' => 'Invalid or expired social login attempt.'], 401);
         }
 
-        if ($response = $completion->complete($user, $request)) {
+        // pull() reads and forgets, so a stale flag cannot leak into a later login.
+        $remember = $flag->enabled() && (bool) $request->session()->pull('passwordless.remember', false);
+
+        if ($response = $completion->complete($user, $request, $remember)) {
             return $response;
         }
 
