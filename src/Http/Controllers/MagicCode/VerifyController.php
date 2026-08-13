@@ -11,6 +11,7 @@ use Webteractive\Passwordless\Strategies\MagicCode\MagicCodeGateDeniedException;
 use Webteractive\Passwordless\Strategies\MagicCode\MagicCodeInvalidException;
 use Webteractive\Passwordless\Strategies\MagicCode\MagicCodeLockedException;
 use Webteractive\Passwordless\Support\AuthCompletion;
+use Webteractive\Passwordless\Support\RememberFlag;
 
 class VerifyController
 {
@@ -18,12 +19,14 @@ class VerifyController
         Request $request,
         MagicCodeStrategy $strategy,
         AuthCompletion $completion,
+        RememberFlag $flag,
     ): JsonResponse|Response|SymfonyResponse {
         abort_unless((bool) config('passwordless.strategies.magic_code.enabled', false), 404);
 
         $data = $request->validate([
             'email' => ['required', 'email'],
             'code' => ['required', 'string'],
+            'remember' => ['nullable', 'boolean'],
         ]);
 
         try {
@@ -40,7 +43,13 @@ class VerifyController
             return response()->json(['message' => $e->getMessage()], 403);
         }
 
-        if ($response = $completion->complete($user, $request)) {
+        // An explicit key on THIS request is the user's latest intent, so it wins
+        // over the value stored when the pair was sent.
+        $remember = $request->has('remember')
+            ? ($flag->enabled() && $request->boolean('remember'))
+            : $flag->resolve($request);
+
+        if ($response = $completion->complete($user, $request, $remember)) {
             return $response;
         }
 

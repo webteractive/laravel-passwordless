@@ -13,6 +13,7 @@ use Webteractive\Passwordless\Strategies\MagicCode\MagicCodeDifferentBrowserExce
 use Webteractive\Passwordless\Strategies\MagicCode\MagicCodeGateDeniedException;
 use Webteractive\Passwordless\Strategies\MagicCode\MagicCodeInvalidException;
 use Webteractive\Passwordless\Support\AuthCompletion;
+use Webteractive\Passwordless\Support\RememberFlag;
 
 class ConsumeController
 {
@@ -21,6 +22,7 @@ class ConsumeController
         MagicCodeStrategy $strategy,
         Passwordless $passwordless,
         AuthCompletion $completion,
+        RememberFlag $flag,
         string $token,
     ): JsonResponse|RedirectResponse|Response|SymfonyResponse {
         abort_unless((bool) config('passwordless.strategies.magic_code.enabled', false), 404);
@@ -39,7 +41,7 @@ class ConsumeController
             return response()->json(['message' => $e->getMessage()], 403);
         }
 
-        if ($response = $completion->complete($user, $request)) {
+        if ($response = $completion->complete($user, $request, $flag->resolve($request))) {
             return $response;
         }
 

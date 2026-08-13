@@ -22,6 +22,7 @@ use Webteractive\Passwordless\Strategies\LoginCode\CodeGenerator;
 use Webteractive\Passwordless\Support\BrowserCookie;
 use Webteractive\Passwordless\Support\DomainPolicy;
 use Webteractive\Passwordless\Support\Lockout;
+use Webteractive\Passwordless\Support\RememberFlag;
 use Webteractive\Passwordless\Support\ResendCooldown;
 use Webteractive\Passwordless\Support\TokenHasher;
 use Webteractive\Passwordless\Support\UserResolver;
@@ -45,6 +46,7 @@ class DefaultMagicCodeStrategy implements MagicCodeStrategy
         protected Lockout $lockout,
         protected BrowserCookie $browserCookie,
         protected UserResolver $users,
+        protected RememberFlag $remember,
     ) {}
 
     public function send(string $email, array $context = []): void
@@ -78,6 +80,7 @@ class DefaultMagicCodeStrategy implements MagicCodeStrategy
                 'ip' => $context['ip'] ?? null,
                 'user_agent' => $context['user_agent'] ?? null,
                 'intended_url' => $context['intended_url'] ?? null,
+                'remember' => $this->remember->fromContext($context),
             ];
 
             $linkMetadata = $base;
@@ -177,6 +180,8 @@ class DefaultMagicCodeStrategy implements MagicCodeStrategy
 
         $this->invalidateSibling($challenge, self::CODE);
 
+        $this->remember->stash($request, (bool) ($challenge->metadata['remember'] ?? false));
+
         event(new MagicCodeConsumed($user, ['intended_url' => $challenge->metadata['intended_url'] ?? null]));
         event(new UserAuthenticated('magic_code', $user));
 
@@ -226,6 +231,8 @@ class DefaultMagicCodeStrategy implements MagicCodeStrategy
         $this->invalidateSibling($challenge, self::LINK);
 
         $this->lockout->clear('magic_code', $email);
+
+        $this->remember->stash($request, (bool) ($challenge->metadata['remember'] ?? false));
 
         event(new MagicCodeVerified($user));
         event(new UserAuthenticated('magic_code', $user));
