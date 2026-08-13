@@ -200,10 +200,19 @@
                 .then(function (data) {
                     if (!data || !data.users || !data.users.length) return;
 
+                    // Build options via the DOM, not innerHTML: names and emails
+                    // come from the database, so string concatenation here would
+                    // execute any markup they contain.
                     var select = document.getElementById('pwl-dev-user');
-                    select.innerHTML = data.users.map(function (u) {
-                        return '<option value="' + u.id + '">' + (u.name ? u.name + ' — ' : '') + u.email + '</option>';
-                    }).join('');
+                    select.replaceChildren();
+
+                    data.users.forEach(function (u) {
+                        var option = document.createElement('option');
+                        option.value = u.id;
+                        option.textContent = u.name ? u.name + ' — ' + u.email : u.email;
+                        select.appendChild(option);
+                    });
+
                     document.getElementById('pwl-dev').hidden = false;
                 })
                 .catch(function () {});

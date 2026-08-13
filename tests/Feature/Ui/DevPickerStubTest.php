@@ -27,6 +27,23 @@ it('probes the dev-login endpoint from every standalone stub', function (string 
 ]);
 
 /**
+ * The picker renders names and emails straight from the database. Building that
+ * markup with innerHTML would execute anything they contain, in a developer's
+ * own browser — so the DOM-API path is the only acceptable one.
+ */
+it('never builds picker markup with innerHTML', function (string $path) {
+    expect(file_get_contents(__DIR__.'/../../../stubs/ui/'.$path))
+        ->not->toContain('.innerHTML =');
+})->with([
+    'livewire/login.blade.php',
+    'react/Login.tsx',
+    'vue/Login.vue',
+    'livewire-embed/passwordless.blade.php',
+    'react-embed/passwordless.tsx',
+    'vue-embed/Passwordless.vue',
+]);
+
+/**
  * The Inertia embed pages receive devUsers/devLoginRoute as props rather than
  * knowing route names — the controller resolves those (asserted below).
  */
