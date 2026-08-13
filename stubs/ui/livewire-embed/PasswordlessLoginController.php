@@ -20,6 +20,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\View\View;
+use Symfony\Component\HttpFoundation\Response as SymfonyResponse;
 use Webteractive\Passwordless\Facades\Passwordless;
 use Webteractive\Passwordless\Strategies\LoginCode\LoginCodeGateDeniedException;
 use Webteractive\Passwordless\Strategies\LoginCode\LoginCodeInvalidException;
@@ -56,7 +57,7 @@ class PasswordlessLoginController extends Controller
         return back()->with('status', __('If that email exists, a code is on its way.'));
     }
 
-    public function verify(Request $request): RedirectResponse
+    public function verify(Request $request): RedirectResponse|SymfonyResponse
     {
         $email = $request->session()->get('passwordless.email');
         $data = $request->validate(['code' => ['required', 'string']]);
@@ -80,6 +81,12 @@ class PasswordlessLoginController extends Controller
         // The checkbox was ticked on the email step, one request earlier — so read
         // the flag the package stashed from the challenge, not this request.
         $remember = app(RememberFlag::class)->resolve($request);
+
+        // Honour Fortify 2FA when the user has it enabled: hand off to the
+        // challenge instead of completing the login here. No-op without Fortify.
+        if (Passwordless::twoFactor()->required($user)) {
+            return Passwordless::twoFactor()->challenge($user, $request, $remember);
+        }
 
         Auth::guard(config('passwordless.guard'))->login($user, $remember);
         $request->session()->regenerate();
