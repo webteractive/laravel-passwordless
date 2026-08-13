@@ -27,6 +27,21 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Remember Me
+    |--------------------------------------------------------------------------
+    |
+    | When enabled, flows accept a `remember` flag and issue a long-lived
+    | recaller cookie via the session guard. The flag is chosen at send time and
+    | travels in the challenge metadata, so it survives the magic-link round
+    | trip. Ignored in api_mode — remember-me is a session-cookie concept with
+    | no meaning for a Sanctum token.
+    */
+    'remember' => [
+        'enabled' => true,
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Security
     |--------------------------------------------------------------------------
     */
