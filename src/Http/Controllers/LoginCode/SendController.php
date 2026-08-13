@@ -13,12 +13,14 @@ class SendController
     {
         $data = $request->validate([
             'email' => ['required', 'email'],
+            'remember' => ['nullable', 'boolean'],
         ]);
 
         try {
             $strategy->send($data['email'], [
                 'ip' => $request->ip(),
                 'user_agent' => $request->userAgent(),
+                'remember' => $request->boolean('remember'),
             ]);
         } catch (LoginCodeResendCooldownException $e) {
             return response()->json(

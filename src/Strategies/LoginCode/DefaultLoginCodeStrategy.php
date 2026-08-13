@@ -15,6 +15,7 @@ use Webteractive\Passwordless\Models\Challenge;
 use Webteractive\Passwordless\Passwordless;
 use Webteractive\Passwordless\Support\DomainPolicy;
 use Webteractive\Passwordless\Support\Lockout;
+use Webteractive\Passwordless\Support\RememberFlag;
 use Webteractive\Passwordless\Support\ResendCooldown;
 use Webteractive\Passwordless\Support\TokenHasher;
 use Webteractive\Passwordless\Support\UserResolver;
@@ -28,6 +29,7 @@ class DefaultLoginCodeStrategy implements LoginCodeStrategy
         protected ResendCooldown $cooldown,
         protected Lockout $lockout,
         protected UserResolver $users,
+        protected RememberFlag $remember,
     ) {}
 
     public function send(string $email, array $context = []): void
@@ -72,6 +74,7 @@ class DefaultLoginCodeStrategy implements LoginCodeStrategy
                 'metadata' => [
                     'ip' => $context['ip'] ?? null,
                     'user_agent' => $context['user_agent'] ?? null,
+                    'remember' => $this->remember->fromContext($context),
                 ],
                 'expires_at' => now()->addSeconds($ttl),
             ]);
@@ -141,6 +144,8 @@ class DefaultLoginCodeStrategy implements LoginCodeStrategy
         }
 
         $this->lockout->clear('login_code', $email);
+
+        $this->remember->stash($request, (bool) ($challenge->metadata['remember'] ?? false));
 
         event(new LoginCodeVerified($user));
         event(new UserAuthenticated('login_code', $user));

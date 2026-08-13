@@ -11,6 +11,7 @@ use Webteractive\Passwordless\Strategies\LoginCode\LoginCodeGateDeniedException;
 use Webteractive\Passwordless\Strategies\LoginCode\LoginCodeInvalidException;
 use Webteractive\Passwordless\Strategies\LoginCode\LoginCodeLockedException;
 use Webteractive\Passwordless\Support\AuthCompletion;
+use Webteractive\Passwordless\Support\RememberFlag;
 
 class VerifyController
 {
@@ -18,10 +19,12 @@ class VerifyController
         Request $request,
         LoginCodeStrategy $strategy,
         AuthCompletion $completion,
+        RememberFlag $flag,
     ): JsonResponse|Response|SymfonyResponse {
         $data = $request->validate([
             'email' => ['required', 'email'],
             'code' => ['required', 'string'],
+            'remember' => ['nullable', 'boolean'],
         ]);
 
         try {
@@ -38,7 +41,13 @@ class VerifyController
             return response()->json(['message' => $e->getMessage()], 403);
         }
 
-        if ($response = $completion->complete($user, $request)) {
+        // An explicit key on THIS request is the user's latest intent, so it wins
+        // over the value stored when the code was sent.
+        $remember = $request->has('remember')
+            ? ($flag->enabled() && $request->boolean('remember'))
+            : $flag->resolve($request);
+
+        if ($response = $completion->complete($user, $request, $remember)) {
             return $response;
         }
 
