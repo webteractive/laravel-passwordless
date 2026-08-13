@@ -11,6 +11,7 @@ use Webteractive\Passwordless\Strategies\MagicLink\MagicLinkDifferentBrowserExce
 use Webteractive\Passwordless\Strategies\MagicLink\MagicLinkGateDeniedException;
 use Webteractive\Passwordless\Strategies\MagicLink\MagicLinkInvalidException;
 use Webteractive\Passwordless\Support\AuthCompletion;
+use Webteractive\Passwordless\Support\RememberFlag;
 
 class ConsumeController
 {
@@ -18,6 +19,7 @@ class ConsumeController
         Request $request,
         MagicLinkStrategy $strategy,
         AuthCompletion $completion,
+        RememberFlag $flag,
         string $token,
     ): JsonResponse|Response|SymfonyResponse {
         if (! $request->hasValidSignature()) {
@@ -34,7 +36,7 @@ class ConsumeController
             return response()->json(['message' => $e->getMessage()], 403);
         }
 
-        if ($response = $completion->complete($user, $request)) {
+        if ($response = $completion->complete($user, $request, $flag->resolve($request))) {
             return $response;
         }
 
