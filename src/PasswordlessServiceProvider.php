@@ -62,7 +62,9 @@ class PasswordlessServiceProvider extends PackageServiceProvider
             // controller, classic form POST -> redirect).
             $this->publishes([
                 "{$uiStubs}/livewire-embed/passwordless.blade.php" => resource_path('views/pages/auth/passwordless.blade.php'),
+                "{$uiStubs}/livewire-embed/confirm-identity.blade.php" => resource_path('views/pages/auth/confirm-identity.blade.php'),
                 "{$uiStubs}/livewire-embed/PasswordlessLoginController.php" => app_path('Http/Controllers/Auth/PasswordlessLoginController.php'),
+                "{$uiStubs}/livewire-embed/PasswordlessFortifyServiceProvider.php" => app_path('Providers/PasswordlessFortifyServiceProvider.php'),
                 "{$uiStubs}/livewire-embed/routes.php" => base_path('routes/passwordless-ui.php'),
             ], 'passwordless-ui-livewire-embed');
 
@@ -75,7 +77,9 @@ class PasswordlessServiceProvider extends PackageServiceProvider
             // (auto-wrapped in the kit's AuthLayout) + Fortify-style controller.
             $this->publishes([
                 "{$uiStubs}/react-embed/passwordless.tsx" => resource_path('js/pages/auth/passwordless.tsx'),
+                "{$uiStubs}/react-embed/confirm-identity.tsx" => resource_path('js/pages/auth/confirm-identity.tsx'),
                 "{$uiStubs}/react-embed/PasswordlessLoginController.php" => app_path('Http/Controllers/Auth/PasswordlessLoginController.php'),
+                "{$uiStubs}/react-embed/PasswordlessFortifyServiceProvider.php" => app_path('Providers/PasswordlessFortifyServiceProvider.php'),
                 "{$uiStubs}/react-embed/routes.php" => base_path('routes/passwordless-ui.php'),
             ], 'passwordless-ui-react-embed');
 
@@ -88,7 +92,9 @@ class PasswordlessServiceProvider extends PackageServiceProvider
             // (auto-wrapped in the kit's AuthLayout) + Fortify-style controller.
             $this->publishes([
                 "{$uiStubs}/vue-embed/Passwordless.vue" => resource_path('js/pages/auth/Passwordless.vue'),
+                "{$uiStubs}/vue-embed/ConfirmIdentity.vue" => resource_path('js/pages/auth/ConfirmIdentity.vue'),
                 "{$uiStubs}/vue-embed/PasswordlessLoginController.php" => app_path('Http/Controllers/Auth/PasswordlessLoginController.php'),
+                "{$uiStubs}/vue-embed/PasswordlessFortifyServiceProvider.php" => app_path('Providers/PasswordlessFortifyServiceProvider.php'),
                 "{$uiStubs}/vue-embed/routes.php" => base_path('routes/passwordless-ui.php'),
             ], 'passwordless-ui-vue-embed');
         }

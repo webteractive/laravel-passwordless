@@ -18,14 +18,17 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 use Inertia\Response;
+use Symfony\Component\HttpFoundation\Response as SymfonyResponse;
 use Webteractive\Passwordless\Facades\Passwordless;
 use Webteractive\Passwordless\Strategies\LoginCode\LoginCodeGateDeniedException;
 use Webteractive\Passwordless\Strategies\LoginCode\LoginCodeInvalidException;
 use Webteractive\Passwordless\Strategies\LoginCode\LoginCodeLockedException;
 use Webteractive\Passwordless\Strategies\LoginCode\LoginCodeResendCooldownException;
 use Webteractive\Passwordless\Strategies\MagicLink\MagicLinkResendCooldownException;
+use Webteractive\Passwordless\Support\RememberFlag;
 
 class PasswordlessLoginController extends Controller
 {
@@ -39,6 +42,17 @@ class PasswordlessLoginController extends Controller
             'status' => $request->session()->get('status'),
             'codeEnabled' => (bool) config('passwordless.strategies.login_code.enabled', true),
             'linkEnabled' => (bool) config('passwordless.strategies.magic_link.enabled', true),
+            // Dev-only user picker. The route exists only when the package's
+            // dev_login guard passes, so this is an empty list in production and
+            // the page renders nothing.
+            'devUsers' => Route::has('passwordless.dev-login.index')
+                ? config('passwordless.user_model')::query()
+                    ->limit(config('passwordless.dev_login.limit', 50))
+                    ->get(['id', config('passwordless.user_email_column', 'email')])
+                : [],
+            'devLoginRoute' => Route::has('passwordless.dev-login.index')
+                ? route('passwordless.dev-login.store')
+                : null,
             'routes' => [
                 'request' => route('passwordless.request'),
                 'verify' => route('passwordless.verify'),
@@ -50,7 +64,10 @@ class PasswordlessLoginController extends Controller
 
     public function requestCode(Request $request): RedirectResponse
     {
-        $data = $request->validate(['email' => ['required', 'email']]);
+        $data = $request->validate([
+            'email' => ['required', 'email'],
+            'remember' => ['nullable', 'boolean'],
+        ]);
 
         try {
             Passwordless::loginCode()->send($data['email'], $this->context($request));
@@ -63,7 +80,7 @@ class PasswordlessLoginController extends Controller
         return back()->with('status', __('If that email exists, a code is on its way.'));
     }
 
-    public function verify(Request $request): RedirectResponse
+    public function verify(Request $request): RedirectResponse|SymfonyResponse
     {
         $email = $request->session()->get('passwordless.email');
         $data = $request->validate(['code' => ['required', 'string']]);
@@ -83,7 +100,17 @@ class PasswordlessLoginController extends Controller
         }
 
         $request->session()->forget('passwordless.email');
-        Auth::guard(config('passwordless.guard'))->login($user);
+        // The checkbox was ticked on the email step, one request earlier — so read
+        // the flag the package stashed from the challenge, not this request.
+        $remember = app(RememberFlag::class)->resolve($request);
+
+        // Honour Fortify 2FA when the user has it enabled: hand off to the
+        // challenge instead of completing the login here. No-op without Fortify.
+        if (Passwordless::twoFactor()->required($user)) {
+            return Passwordless::twoFactor()->challenge($user, $request, $remember);
+        }
+
+        Auth::guard(config('passwordless.guard'))->login($user, $remember);
         $request->session()->regenerate();
 
         // Honors a middleware-set intended URL first, then the package's
@@ -93,7 +120,10 @@ class PasswordlessLoginController extends Controller
 
     public function requestLink(Request $request): RedirectResponse
     {
-        $data = $request->validate(['email' => ['required', 'email']]);
+        $data = $request->validate([
+            'email' => ['required', 'email'],
+            'remember' => ['nullable', 'boolean'],
+        ]);
 
         try {
             Passwordless::magicLink()->send($data['email'], $this->context($request));
@@ -113,6 +143,10 @@ class PasswordlessLoginController extends Controller
 
     protected function context(Request $request): array
     {
-        return ['ip' => $request->ip(), 'user_agent' => $request->userAgent()];
+        return [
+            'ip' => $request->ip(),
+            'user_agent' => $request->userAgent(),
+            'remember' => $request->boolean('remember'),
+        ];
     }
 }

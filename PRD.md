@@ -10,6 +10,21 @@ A Laravel package providing passwordless authentication strategies for Laravel a
 > and do not reflect the shipped package, which provides **magic link + login code** against a
 > single `passwordless_challenges` table.
 
+> **Approved expansion (2026-08-13): starter-kit 2FA, remember-me, dev login.** Three additions
+> beyond the original scope, all owner-approved:
+>
+> 1. **Two-factor authentication** — the package now honours Laravel Fortify's 2FA challenge on every
+>    flow, and provides an emailed identity-confirmation code so password-less accounts can satisfy
+>    `password.confirm` and enable 2FA at all. It still implements **no second factor of its own**;
+>    the "recovery codes" non-goal below therefore stands unchanged — Fortify owns them. Fortify
+>    remains an optional, dev-only dependency.
+> 2. **Remember me** — a `remember` flag across all flows, persisted on the challenge row so it
+>    survives the magic-link round trip.
+> 3. **Dev login** — a local-only user picker, off by default behind three independent guard
+>    conditions including a permanent production denylist.
+>
+> See `docs/superpowers/specs/2026-08-13-starter-kit-2fa-remember-dev-login-design.md`.
+
 ## Goals
 - Drop-in passwordless auth for any Laravel app (11/12/13).
 - Multiple strategies, composable, opt-in per app.

@@ -11,6 +11,8 @@ use Webteractive\Passwordless\Contracts\MagicLinkStrategy;
 use Webteractive\Passwordless\Contracts\SocialStrategy;
 use Webteractive\Passwordless\Support\AuthEvent;
 use Webteractive\Passwordless\Support\Decision;
+use Webteractive\Passwordless\Support\IdentityConfirmation;
+use Webteractive\Passwordless\Support\TwoFactor;
 use Webteractive\Passwordless\Testing\PasswordlessFake;
 
 class Passwordless
@@ -45,6 +47,24 @@ class Passwordless
     public function magicCode(): MagicCodeStrategy
     {
         return $this->container->make(MagicCodeStrategy::class);
+    }
+
+    /**
+     * Fortify two-factor handoff. Safe to call when Fortify is absent —
+     * required() simply returns false and nothing changes.
+     */
+    public function twoFactor(): TwoFactor
+    {
+        return $this->container->make(TwoFactor::class);
+    }
+
+    /**
+     * Emailed identity re-confirmation, used to satisfy Laravel's
+     * `password.confirm` middleware for accounts that have no password.
+     */
+    public function confirmation(): IdentityConfirmation
+    {
+        return $this->container->make(IdentityConfirmation::class);
     }
 
     /**

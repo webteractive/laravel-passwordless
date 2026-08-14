@@ -27,6 +27,66 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Remember Me
+    |--------------------------------------------------------------------------
+    |
+    | When enabled, flows accept a `remember` flag and issue a long-lived
+    | recaller cookie via the session guard. The flag is chosen at send time and
+    | travels in the challenge metadata, so it survives the magic-link round
+    | trip. Ignored in api_mode — remember-me is a session-cookie concept with
+    | no meaning for a Sanctum token.
+    */
+    'remember' => [
+        'enabled' => true,
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Identity Confirmation
+    |--------------------------------------------------------------------------
+    |
+    | Re-confirms an authenticated user with an emailed code so a password-less
+    | account can satisfy Laravel's `password.confirm` middleware — the gate in
+    | front of Fortify's two-factor settings. Its cooldown/lockout keys are
+    | separate from login, so neither can lock a user out of the other.
+    */
+    'confirmation' => [
+        'enabled' => true,
+        'length' => 6,
+        'ttl' => 10 * 60,
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Dev Login (user selection)
+    |--------------------------------------------------------------------------
+    |
+    | DANGER: a user picker that signs in ANY user with no credential. Three
+    | independent conditions must ALL hold before the routes are registered at
+    | all: `enabled` is strictly true, the current APP_ENV is listed in
+    | `environments`, and the app is not in production (a permanent denylist
+    | that `environments` cannot override). When any check fails the endpoints
+    | do not exist — they 404 rather than 403.
+    |
+    | Enabling is a deliberate edit to THIS file — there is intentionally no
+    | env() default, so no stray environment variable can switch it on. If you
+    | want env control in your own app, change the line below to
+    | env('PASSWORDLESS_DEV_LOGIN', false) yourself, and never set that variable
+    | in a shared or production environment.
+    */
+    'dev_login' => [
+        'enabled' => false,
+        'environments' => ['local'],
+
+        // Dev logins skip the Fortify 2FA challenge by default — a shortcut that
+        // demands a TOTP defeats its purpose. Set true to exercise that path.
+        'two_factor' => false,
+
+        'limit' => 50,
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Security
     |--------------------------------------------------------------------------
     */

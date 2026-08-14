@@ -14,6 +14,7 @@
 import { Head, useForm } from '@inertiajs/vue3';
 import InputError from '@/components/InputError.vue';
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 
@@ -24,12 +25,17 @@ defineOptions({
     },
 });
 
+type DevUser = { id: number | string; email: string };
+
 const props = defineProps<{
     step: 'email' | 'code';
     email?: string;
     status?: string;
     codeEnabled: boolean;
     linkEnabled: boolean;
+    // Empty unless the package's dev_login guard passed — production sees [].
+    devUsers: DevUser[];
+    devLoginRoute: string | null;
     routes: {
         request: string;
         verify: string;
@@ -38,12 +44,16 @@ const props = defineProps<{
     };
 }>();
 
-const emailForm = useForm({ email: props.email ?? '' });
+// `remember` is chosen at send time. The package stores it on the challenge, so
+// it still applies when the emailed code or link is used later.
+const emailForm = useForm({ email: props.email ?? '', remember: false });
 const codeForm = useForm({ code: '' });
+const devForm = useForm({ user: props.devUsers[0]?.id ?? '' });
 
 const submitCode = () => emailForm.post(props.routes.request);
 const submitLink = () => emailForm.post(props.routes.link);
 const submitVerify = () => codeForm.post(props.routes.verify);
+const devSignIn = () => props.devLoginRoute && devForm.post(props.devLoginRoute);
 </script>
 
 <template>
@@ -92,6 +102,11 @@ const submitVerify = () => codeForm.post(props.routes.verify);
             <InputError :message="emailForm.errors.email" />
         </div>
 
+        <div class="flex items-center space-x-3">
+            <Checkbox id="remember" name="remember" v-model="emailForm.remember" />
+            <Label for="remember">Remember me</Label>
+        </div>
+
         <Button v-if="codeEnabled" type="submit" class="w-full" :disabled="emailForm.processing">
             Email me a code
         </Button>
@@ -106,5 +121,19 @@ const submitVerify = () => codeForm.post(props.routes.verify);
         >
             Email me a magic link
         </Button>
+
+        <div v-if="devLoginRoute && devUsers.length" class="flex flex-col gap-2 border-t pt-4">
+            <Label for="devUser">Dev sign-in</Label>
+            <select
+                id="devUser"
+                v-model="devForm.user"
+                class="h-9 rounded-md border border-input bg-transparent px-3 text-sm"
+            >
+                <option v-for="u in devUsers" :key="u.id" :value="u.id">{{ u.email }}</option>
+            </select>
+            <Button type="button" variant="outline" class="w-full" @click="devSignIn">
+                Sign in as selected user
+            </Button>
+        </div>
     </form>
 </template>

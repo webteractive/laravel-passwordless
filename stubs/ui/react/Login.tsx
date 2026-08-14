@@ -15,7 +15,7 @@
  * (no component-library imports) so the stub drops in without extra dependencies.
  */
 import { Head } from '@inertiajs/react';
-import { FormEvent, useMemo, useRef, useState } from 'react';
+import { FormEvent, useEffect, useMemo, useRef, useState } from 'react';
 
 type LoginProps = {
     appName: string;
@@ -61,6 +61,13 @@ export default function Login({
 }: LoginProps) {
     const [step, setStep] = useState<Step>('email');
     const [email, setEmail] = useState('');
+    // Chosen at send time; the package stores it on the challenge so it still
+    // applies when the emailed code or link is used on a later request.
+    const [remember, setRemember] = useState(false);
+    // Dev-only user picker. The endpoint exists only when the package's
+    // dev_login guard passes, so this stays empty everywhere else.
+    const [devUsers, setDevUsers] = useState<Array<{ id: number | string; name?: string; email: string }>>([]);
+    const [devUser, setDevUser] = useState('');
     const [digits, setDigits] = useState<string[]>(() => Array(codeLength).fill(''));
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
@@ -91,7 +98,7 @@ export default function Login({
         setError('');
         setLoading(true);
         try {
-            const res = await postJson(endpoints.sendCode, { email });
+            const res = await postJson(endpoints.sendCode, { email, remember });
             const data = await res.json().catch(() => ({}));
             if (res.status === 202) {
                 setDigits(Array(codeLength).fill(''));
@@ -111,7 +118,7 @@ export default function Login({
         setError('');
         setLoading(true);
         try {
-            const res = await postJson(endpoints.sendLink, { email });
+            const res = await postJson(endpoints.sendLink, { email, remember });
             const data = await res.json().catch(() => ({}));
             if (res.status === 202) {
                 setStep('sent');
@@ -130,7 +137,7 @@ export default function Login({
         setError('');
         setLoading(true);
         try {
-            const res = await postJson(endpoints.verifyCode, { email, code });
+            const res = await postJson(endpoints.verifyCode, { email, code, remember });
             if (res.status === 204 || res.status === 200) {
                 window.location.assign(redirect);
                 return;
@@ -169,6 +176,24 @@ export default function Login({
         const bs = boxes();
         bs[Math.min(text.length, codeLength - 1)]?.focus();
         if (text.length === codeLength) verifyCode(text);
+    }
+
+    useEffect(() => {
+        // Dev-only user picker. A 404 (the normal case outside local dev) leaves
+        // devUsers empty and nothing renders.
+        fetch('/auth/dev-login', { headers: { Accept: 'application/json' } })
+            .then((r) => (r.ok ? r.json() : null))
+            .then((data) => {
+                if (!data?.users?.length) return;
+                setDevUsers(data.users);
+                setDevUser(String(data.users[0].id));
+            })
+            .catch(() => {});
+    }, []);
+
+    async function devSignIn() {
+        await postJson('/auth/dev-login', { user: devUser, remember });
+        window.location.reload();
     }
 
     const primaryBtn =
@@ -224,6 +249,17 @@ export default function Login({
                                 />
                             </div>
 
+                            <label className="flex items-center gap-2 text-sm text-neutral-600 dark:text-neutral-400">
+                                <input
+                                    type="checkbox"
+                                    checked={remember}
+                                    disabled={loading}
+                                    onChange={(e) => setRemember(e.target.checked)}
+                                    className="rounded border-neutral-300 text-neutral-900 focus:ring-neutral-900/20 dark:border-neutral-700 dark:bg-neutral-950"
+                                />
+                                Remember me
+                            </label>
+
                             {codeEnabled && (
                                 <button type="submit" disabled={loading} className={primaryBtn}>
                                     {loading ? 'Sending…' : 'Send me a code'}
@@ -243,6 +279,36 @@ export default function Login({
                                 >
                                     Email me a magic link
                                 </button>
+                            )}
+
+                            {devUsers.length > 0 && (
+                                <div className="mt-2 border-t border-neutral-200 pt-4 dark:border-neutral-800">
+                                    <label
+                                        htmlFor="pwl-dev-user"
+                                        className="text-xs font-medium uppercase tracking-wide text-neutral-500"
+                                    >
+                                        Dev sign-in
+                                    </label>
+                                    <select
+                                        id="pwl-dev-user"
+                                        value={devUser}
+                                        onChange={(e) => setDevUser(e.target.value)}
+                                        className="mt-1.5 w-full rounded-lg border border-neutral-300 bg-white px-3.5 py-2.5 text-sm dark:border-neutral-700 dark:bg-neutral-950"
+                                    >
+                                        {devUsers.map((u) => (
+                                            <option key={u.id} value={u.id}>
+                                                {u.name ? `${u.name} — ${u.email}` : u.email}
+                                            </option>
+                                        ))}
+                                    </select>
+                                    <button
+                                        type="button"
+                                        onClick={devSignIn}
+                                        className="mt-2 inline-flex w-full items-center justify-center rounded-lg border border-neutral-300 px-4 py-2.5 text-sm font-semibold text-neutral-700 transition hover:bg-neutral-50 dark:border-neutral-700 dark:text-neutral-200 dark:hover:bg-neutral-800"
+                                    >
+                                        Sign in as selected user
+                                    </button>
+                                </div>
                             )}
                         </form>
                     )}

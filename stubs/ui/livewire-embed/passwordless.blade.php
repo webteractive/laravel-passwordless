@@ -83,6 +83,11 @@
                     placeholder="email@example.com"
                 />
 
+                {{-- Chosen here, at send time. The package stores it on the
+                     challenge so it still applies when the emailed code or link
+                     is used on a later request. --}}
+                <flux:checkbox name="remember" value="1" :label="__('Remember me')" />
+
                 @if ($codeEnabled)
                     <flux:button variant="primary" type="submit" class="w-full">
                         {{ __('Email me a code') }}
@@ -99,6 +104,28 @@
                         {{ __('Email me a magic link') }}
                     </flux:button>
                 @endif
+            </form>
+        @endif
+
+        {{-- Dev-only user picker. The route exists only when the package's
+             dev_login guard passes, so this block never renders in production. --}}
+        @if (Route::has('passwordless.dev-login.index'))
+            <form method="POST" action="{{ route('passwordless.dev-login.store') }}"
+                  class="flex flex-col gap-2 border-t border-zinc-200 pt-4 dark:border-zinc-700">
+                @csrf
+                <flux:select name="user" :label="__('Dev sign-in')">
+                    @foreach (config('passwordless.user_model')::query()
+                        ->limit(config('passwordless.dev_login.limit', 50))
+                        ->get() as $devUser)
+                        <flux:select.option value="{{ $devUser->getKey() }}">
+                            {{ $devUser->email }}
+                        </flux:select.option>
+                    @endforeach
+                </flux:select>
+
+                <flux:button type="submit" variant="filled" class="w-full">
+                    {{ __('Sign in as selected user') }}
+                </flux:button>
             </form>
         @endif
 

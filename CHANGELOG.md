@@ -2,6 +2,26 @@
 
 All notable changes to `laravel-passwordless` will be documented in this file.
 
+## Unreleased
+
+### Added
+
+- **Starter-kit two-factor authentication.** When a user has Laravel Fortify 2FA enabled, every flow (magic link, login code, magicCode, social, and the published embed controllers) now hands off to Fortify's own challenge instead of logging them in — writing Fortify's `login.id` / `login.remember` session contract, dispatching `TwoFactorAuthenticationChallenged`, and redirecting to `two-factor.login` (or returning `{"two_factor": true}` for JSON). Fortify remains **optional**: it is a dev-only dependency, all detection is duck-typed, and apps without it are byte-for-byte unaffected. New `Passwordless::twoFactor()` API.
+- **2FA enrollment for password-less accounts.** An emailed identity-confirmation code now satisfies Laravel's `password.confirm` middleware via `Fortify::confirmPasswordsUsing()`, so users with no password hash can enable 2FA from a starter kit's settings page. New `Passwordless::confirmation()` API, `POST /auth/confirm/send` endpoint, and a `confirm` challenge type (reuses `passwordless_challenges` — no schema change; `passwordless:prune` covers it). Its resend cooldown and lockout use a key namespace separate from login, so neither can lock a user out of the other.
+- **Remember me** across every flow. The flag is chosen at send time and persisted in `Challenge.metadata`, so it survives the magic-link round trip; social carries it through the session. A `remember` key on a verify request overrides the stored value. Configurable via `remember.enabled`; ignored in `api_mode`.
+- **Dev login (user selection).** An opt-in, local-only picker that signs in a chosen user — `GET`/`POST /auth/dev-login`. Guarded by three independent conditions (strictly-`true` config flag, an `APP_ENV` allow-list, and a permanent production denylist); when any fails the routes are **not registered at all** and `404`. Fires `UserAuthenticated('dev_login', …)` so audit hooks see it distinctly.
+- Remember-me checkboxes and dev pickers in all six UI stubs, plus `confirm-identity` pages and a `PasswordlessFortifyServiceProvider` for the three `-embed` variants.
+
+### Changed
+
+- All five auth-completing controllers now funnel through a new `Support\AuthCompletion` seam, removing five copies of the `api_mode` token branch. Behaviour-preserving — no explicit session regeneration was added, since `SessionGuard::login()` already rotates the session id.
+
+### Security
+
+- **`api_mode` no longer issues a token to a user with 2FA enabled.** It returns `409 {"two_factor": true}` instead. Fortify's challenge is session-based and cannot be completed over a token flow, so issuing one would have bypassed the user's second factor.
+- Two deliberate fail-closed errors rather than silent downgrades: `TwoFactorGuardMismatchException` when `passwordless.guard` and `fortify.guard` disagree, and `TwoFactorChallengeUnavailableException` when a user requires a challenge Fortify cannot deliver.
+- `dev_login.enabled` ships as a literal `false` with **no `env()` default**, so no stray environment variable can enable the user picker; turning it on requires a deliberate edit to the published config.
+
 ## 0.1.3 - 2026-07-23
 
 ### Added

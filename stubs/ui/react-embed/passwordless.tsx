@@ -14,8 +14,11 @@ import { Head, useForm } from '@inertiajs/react';
 import { FormEvent } from 'react';
 import InputError from '@/components/input-error';
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+
+type DevUser = { id: number | string; email: string };
 
 type Props = {
     step: 'email' | 'code';
@@ -23,6 +26,9 @@ type Props = {
     status?: string;
     codeEnabled: boolean;
     linkEnabled: boolean;
+    // Empty unless the package's dev_login guard passed — production sees [].
+    devUsers: DevUser[];
+    devLoginRoute: string | null;
     routes: {
         request: string;
         verify: string;
@@ -31,9 +37,12 @@ type Props = {
     };
 };
 
-export default function Passwordless({ step, email, status, codeEnabled, linkEnabled, routes }: Props) {
-    const emailForm = useForm({ email: email ?? '' });
+export default function Passwordless({ step, email, status, codeEnabled, linkEnabled, devUsers, devLoginRoute, routes }: Props) {
+    // `remember` is chosen at send time. The package stores it on the challenge,
+    // so it still applies when the emailed code or link is used later.
+    const emailForm = useForm({ email: email ?? '', remember: false });
     const codeForm = useForm({ code: '' });
+    const devForm = useForm({ user: devUsers[0]?.id ?? '' });
 
     const submitCode = (e: FormEvent) => {
         e.preventDefault();
@@ -97,6 +106,16 @@ export default function Passwordless({ step, email, status, codeEnabled, linkEna
                         <InputError message={emailForm.errors.email} />
                     </div>
 
+                    <div className="flex items-center space-x-3">
+                        <Checkbox
+                            id="remember"
+                            name="remember"
+                            checked={emailForm.data.remember}
+                            onClick={() => emailForm.setData('remember', !emailForm.data.remember)}
+                        />
+                        <Label htmlFor="remember">Remember me</Label>
+                    </div>
+
                     {codeEnabled && (
                         <Button type="submit" className="w-full" disabled={emailForm.processing}>
                             Email me a code
@@ -113,6 +132,32 @@ export default function Passwordless({ step, email, status, codeEnabled, linkEna
                         >
                             Email me a magic link
                         </Button>
+                    )}
+
+                    {devLoginRoute && devUsers.length > 0 && (
+                        <div className="flex flex-col gap-2 border-t pt-4">
+                            <Label htmlFor="devUser">Dev sign-in</Label>
+                            <select
+                                id="devUser"
+                                value={String(devForm.data.user)}
+                                onChange={(e) => devForm.setData('user', e.target.value)}
+                                className="h-9 rounded-md border border-input bg-transparent px-3 text-sm"
+                            >
+                                {devUsers.map((u) => (
+                                    <option key={u.id} value={u.id}>
+                                        {u.email}
+                                    </option>
+                                ))}
+                            </select>
+                            <Button
+                                type="button"
+                                variant="outline"
+                                className="w-full"
+                                onClick={() => devForm.post(devLoginRoute)}
+                            >
+                                Sign in as selected user
+                            </Button>
+                        </div>
                     )}
                 </form>
             )}

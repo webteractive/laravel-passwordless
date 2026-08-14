@@ -16,6 +16,7 @@ use Webteractive\Passwordless\Notifications\MagicLinkNotification;
 use Webteractive\Passwordless\Passwordless;
 use Webteractive\Passwordless\Support\BrowserCookie;
 use Webteractive\Passwordless\Support\DomainPolicy;
+use Webteractive\Passwordless\Support\RememberFlag;
 use Webteractive\Passwordless\Support\ResendCooldown;
 use Webteractive\Passwordless\Support\TokenHasher;
 use Webteractive\Passwordless\Support\UserResolver;
@@ -28,6 +29,7 @@ class DefaultMagicLinkStrategy implements MagicLinkStrategy
         protected ResendCooldown $cooldown,
         protected BrowserCookie $browserCookie,
         protected UserResolver $users,
+        protected RememberFlag $remember,
     ) {}
 
     public function send(string $email, array $context = []): void
@@ -57,6 +59,7 @@ class DefaultMagicLinkStrategy implements MagicLinkStrategy
                 'ip' => $context['ip'] ?? null,
                 'user_agent' => $context['user_agent'] ?? null,
                 'intended_url' => $context['intended_url'] ?? null,
+                'remember' => $this->remember->fromContext($context),
             ];
 
             if ($browserToken !== null) {
@@ -149,6 +152,8 @@ class DefaultMagicLinkStrategy implements MagicLinkStrategy
         if ($claimed !== 1) {
             throw new MagicLinkInvalidException;
         }
+
+        $this->remember->stash($request, (bool) ($challenge->metadata['remember'] ?? false));
 
         event(new MagicLinkConsumed($user, ['intended_url' => $challenge->metadata['intended_url'] ?? null]));
         event(new UserAuthenticated('magic_link', $user));

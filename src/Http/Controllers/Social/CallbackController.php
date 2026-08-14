@@ -6,15 +6,24 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Laravel\Socialite\Two\InvalidStateException;
+use Symfony\Component\HttpFoundation\Response as SymfonyResponse;
 use Webteractive\Passwordless\Contracts\SocialStrategy;
 use Webteractive\Passwordless\Passwordless;
 use Webteractive\Passwordless\Strategies\Social\SocialGateDeniedException;
 use Webteractive\Passwordless\Strategies\Social\SocialProviderNotEnabledException;
+use Webteractive\Passwordless\Support\AuthCompletion;
+use Webteractive\Passwordless\Support\RememberFlag;
 
 class CallbackController
 {
-    public function __invoke(Request $request, string $provider, SocialStrategy $strategy, Passwordless $passwordless): JsonResponse|RedirectResponse
-    {
+    public function __invoke(
+        Request $request,
+        string $provider,
+        SocialStrategy $strategy,
+        Passwordless $passwordless,
+        AuthCompletion $completion,
+        RememberFlag $flag,
+    ): JsonResponse|RedirectResponse|SymfonyResponse {
         try {
             $user = $strategy->callback($provider, $request);
         } catch (SocialProviderNotEnabledException) {
@@ -27,15 +36,12 @@ class CallbackController
             return response()->json(['message' => 'Invalid or expired social login attempt.'], 401);
         }
 
-        if (config('passwordless.api_mode')) {
-            $token = method_exists($user, 'createToken')
-                ? $user->createToken('passwordless')->plainTextToken
-                : null;
+        // pull() reads and forgets, so a stale flag cannot leak into a later login.
+        $remember = $flag->enabled() && (bool) $request->session()->pull('passwordless.remember', false);
 
-            return response()->json(['token' => $token, 'user' => $user]);
+        if ($response = $completion->complete($user, $request, $remember)) {
+            return $response;
         }
-
-        auth(config('passwordless.guard'))->login($user);
 
         return redirect()->intended($passwordless->resolveRedirect($user, $request));
     }

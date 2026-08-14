@@ -14,6 +14,7 @@ class SendController
         $data = $request->validate([
             'email' => ['required', 'email'],
             'intended_url' => ['nullable', 'string'],
+            'remember' => ['nullable', 'boolean'],
         ]);
 
         try {
@@ -21,6 +22,7 @@ class SendController
                 'ip' => $request->ip(),
                 'user_agent' => $request->userAgent(),
                 'intended_url' => $data['intended_url'] ?? null,
+                'remember' => $request->boolean('remember'),
             ]);
         } catch (MagicLinkResendCooldownException $e) {
             return response()->json(
