@@ -61,6 +61,28 @@ it('logs in the selected user', function () {
     expect(auth()->id())->toBe($user->getKey());
 });
 
+/**
+ * A classic form post must navigate somewhere. Returning 204 to a browser form
+ * leaves the user sitting on the login page while actually signed in — which is
+ * exactly what happened when this was first browser-tested.
+ */
+it('redirects a browser form post instead of returning 204', function () {
+    $user = User::create(['email' => 'pickform@example.com']);
+
+    $this->post('/auth/dev-login', ['user' => $user->getKey()])
+        ->assertRedirect();
+
+    expect(auth()->check())->toBeTrue();
+});
+
+it('honours the configured redirect for browser form posts', function () {
+    config()->set('passwordless.redirect', '/somewhere');
+    $user = User::create(['email' => 'pickredir@example.com']);
+
+    $this->post('/auth/dev-login', ['user' => $user->getKey()])
+        ->assertRedirect('/somewhere');
+});
+
 it('honours remember on dev login', function () {
     $user = User::create(['email' => 'pickr@example.com']);
 

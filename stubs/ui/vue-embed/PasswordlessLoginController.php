@@ -28,6 +28,8 @@ use Webteractive\Passwordless\Strategies\LoginCode\LoginCodeInvalidException;
 use Webteractive\Passwordless\Strategies\LoginCode\LoginCodeLockedException;
 use Webteractive\Passwordless\Strategies\LoginCode\LoginCodeResendCooldownException;
 use Webteractive\Passwordless\Strategies\MagicLink\MagicLinkResendCooldownException;
+use Webteractive\Passwordless\Support\ConfirmationLockedException;
+use Webteractive\Passwordless\Support\ConfirmationResendCooldownException;
 use Webteractive\Passwordless\Support\RememberFlag;
 
 class PasswordlessLoginController extends Controller
@@ -139,6 +141,29 @@ class PasswordlessLoginController extends Controller
         $request->session()->forget('passwordless.email');
 
         return redirect()->route('passwordless.login');
+    }
+
+    /**
+     * Email an identity-confirmation code to the signed-in user.
+     *
+     * This posts here rather than straight to the package's
+     * `passwordless.confirm.send` route because that route is part of the
+     * headless core and answers with JSON — a classic form post would land the
+     * browser on a raw `{"status":"sent"}` page. Same validate/act/redirect-back
+     * shape as the rest of this controller.
+     */
+    public function sendConfirmation(Request $request): RedirectResponse
+    {
+        try {
+            Passwordless::confirmation()->send($request->user(), [
+                'ip' => $request->ip(),
+                'user_agent' => $request->userAgent(),
+            ]);
+        } catch (ConfirmationResendCooldownException|ConfirmationLockedException $e) {
+            return back()->withErrors(['password' => __('Please wait :s seconds and try again.', ['s' => $e->retryAfter])]);
+        }
+
+        return back()->with('status', __('We emailed you a confirmation code.'));
     }
 
     protected function context(Request $request): array

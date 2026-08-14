@@ -49,19 +49,49 @@ it('handles the two-factor challenge in every published login controller', funct
 /**
  * Blade builds the URLs in the page; Inertia pages receive them as props from
  * the provider. So the pair, not the page alone, is what must reference both
- * routes — the package send route and Fortify's own confirm-password store.
+ * routes.
+ *
+ * The send target must be the app-owned `passwordless.confirm.request` action,
+ * NOT the package's `passwordless.confirm.send` — that one is the headless JSON
+ * endpoint, and a browser form posting to it lands the user on a raw
+ * `{"status":"sent"}` page instead of back on the confirm form.
  */
-it('wires every confirm-identity flow to the send route and Fortify store route', function (string $page, string $provider) {
+it('wires every confirm-identity flow to the app send action and Fortify store route', function (string $page, string $provider) {
     $combined = file_get_contents(__DIR__.'/../../../stubs/ui/'.$page)
         .file_get_contents(__DIR__.'/../../../stubs/ui/'.$provider);
 
     expect($combined)
-        ->toContain('passwordless.confirm.send')
+        ->toContain('passwordless.confirm.request')
         ->toContain('password.confirm.store');
 })->with([
     ['livewire-embed/confirm-identity.blade.php', 'livewire-embed/PasswordlessFortifyServiceProvider.php'],
     ['react-embed/confirm-identity.tsx', 'react-embed/PasswordlessFortifyServiceProvider.php'],
     ['vue-embed/ConfirmIdentity.vue', 'vue-embed/PasswordlessFortifyServiceProvider.php'],
+]);
+
+it('never posts a browser form straight at the headless JSON send route', function (string $stub) {
+    $contents = file_get_contents(__DIR__.'/../../../stubs/ui/'.$stub);
+
+    expect($contents)->not->toMatch('/route\(\s*[\'"]passwordless\.confirm\.send[\'"]\s*\)/');
+})->with([
+    'livewire-embed/confirm-identity.blade.php',
+    'react-embed/PasswordlessFortifyServiceProvider.php',
+    'vue-embed/PasswordlessFortifyServiceProvider.php',
+]);
+
+it('defines the app-owned send action and route in every embed variant', function (string $controller, string $routes) {
+    expect(file_get_contents(__DIR__.'/../../../stubs/ui/'.$controller))
+        ->toContain('function sendConfirmation')
+        ->toContain('Passwordless::confirmation()->send');
+
+    expect(file_get_contents(__DIR__.'/../../../stubs/ui/'.$routes))
+        ->toContain('passwordless.confirm.request')
+        // The user is signed in at this point — the guest group would 302 them away.
+        ->toContain("'auth'");
+})->with([
+    ['livewire-embed/PasswordlessLoginController.php', 'livewire-embed/routes.php'],
+    ['react-embed/PasswordlessLoginController.php', 'react-embed/routes.php'],
+    ['vue-embed/PasswordlessLoginController.php', 'vue-embed/routes.php'],
 ]);
 
 it('passes the route props Inertia confirm pages declare', function (string $provider) {

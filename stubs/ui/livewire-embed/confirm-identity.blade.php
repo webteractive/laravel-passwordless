@@ -8,7 +8,10 @@
     ConfirmPasswordViewResponse binding in PasswordlessFortifyServiceProvider.
 
     Two forms, two destinations:
-      1. passwordless.confirm.send  — package route, emails a confirmation code
+      1. passwordless.confirm.request — YOUR route below (sendConfirmation), which
+         calls the package and redirects back. Do NOT post a browser form straight
+         to the package's `passwordless.confirm.send` route: that is the headless
+         JSON endpoint and would dump the user on a raw {"status":"sent"} page.
       2. password.confirm.store     — FORTIFY's own route; it runs the
          confirmPasswordsUsing callback and stamps auth.password_confirmed_at
 
@@ -23,7 +26,7 @@
 
         <x-auth-session-status class="text-center" :status="session('status')" />
 
-        <form method="POST" action="{{ route('passwordless.confirm.send') }}">
+        <form method="POST" action="{{ route('passwordless.confirm.request') }}">
             @csrf
             <flux:button type="submit" variant="filled" class="w-full">
                 {{ __('Email me a code') }}

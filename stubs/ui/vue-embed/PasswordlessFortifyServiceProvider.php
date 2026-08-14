@@ -54,8 +54,10 @@ class PasswordlessFortifyServiceProvider extends ServiceProvider
             {
                 return Inertia::render('auth/ConfirmIdentity', [
                     'routes' => [
-                        // Package route: emails the confirmation code.
-                        'send' => route('passwordless.confirm.send'),
+                        // YOUR route (sendConfirmation): calls the package, then
+                        // redirects back. Not the package's headless JSON route,
+                        // which Inertia cannot consume.
+                        'send' => route('passwordless.confirm.request'),
                         // Fortify's own route: runs confirmPasswordsUsing and
                         // stamps auth.password_confirmed_at on success.
                         'confirm' => route('password.confirm.store'),

@@ -29,3 +29,11 @@ Route::middleware(['web', 'guest'])->group(function () {
     Route::post('passwordless/verify', [PasswordlessLoginController::class, 'verify'])->name('passwordless.verify');
     Route::post('passwordless/link', [PasswordlessLoginController::class, 'requestLink'])->name('passwordless.link');
 });
+
+// Identity confirmation — emails a code so a password-less account can satisfy
+// Fortify's `password.confirm` gate (the guard in front of the 2FA settings).
+// The user is already signed in here, hence `auth` rather than `guest`.
+Route::middleware(['web', 'auth'])->group(function () {
+    Route::post('passwordless/confirm', [PasswordlessLoginController::class, 'sendConfirmation'])
+        ->name('passwordless.confirm.request');
+});
