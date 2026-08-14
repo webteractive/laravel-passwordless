@@ -52,6 +52,10 @@ class PasswordlessFortifyServiceProvider extends ServiceProvider
         {
             public function toResponse($request)
             {
+                // ->toResponse() is required: Laravel resolves a Responsable only
+                // ONE level, and Inertia::render() returns another Responsable —
+                // returning it raw makes Laravel try to use it as a response body
+                // ("setContent(): Argument #1 must be of type ?string").
                 return Inertia::render('auth/ConfirmIdentity', [
                     'routes' => [
                         // YOUR route (sendConfirmation): calls the package, then
@@ -63,7 +67,7 @@ class PasswordlessFortifyServiceProvider extends ServiceProvider
                         'confirm' => route('password.confirm.store'),
                     ],
                     'status' => session('status'),
-                ]);
+                ])->toResponse($request);
             }
         });
     }

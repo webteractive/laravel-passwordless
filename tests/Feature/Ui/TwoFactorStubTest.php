@@ -94,6 +94,21 @@ it('defines the app-owned send action and route in every embed variant', functio
     ['vue-embed/PasswordlessLoginController.php', 'vue-embed/routes.php'],
 ]);
 
+/**
+ * Laravel resolves a Responsable exactly one level. Inertia::render() returns
+ * another Responsable, so handing it back raw from ConfirmPasswordViewResponse
+ * makes Laravel try to use it as a response body and blows up with
+ * "setContent(): Argument #1 ($content) must be of type ?string". Caught by
+ * browser-testing the React kit; the Livewire stub returns a View and is fine.
+ */
+it('converts the Inertia response before returning it to Fortify', function (string $provider) {
+    expect(file_get_contents(__DIR__.'/../../../stubs/ui/'.$provider))
+        ->toContain('->toResponse($request)');
+})->with([
+    'react-embed/PasswordlessFortifyServiceProvider.php',
+    'vue-embed/PasswordlessFortifyServiceProvider.php',
+]);
+
 it('passes the route props Inertia confirm pages declare', function (string $provider) {
     expect(file_get_contents(__DIR__.'/../../../stubs/ui/'.$provider))
         ->toContain("'routes' =>")
