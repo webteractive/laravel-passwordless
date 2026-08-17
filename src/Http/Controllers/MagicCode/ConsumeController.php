@@ -2,10 +2,7 @@
 
 namespace Webteractive\Passwordless\Http\Controllers\MagicCode;
 
-use Illuminate\Http\JsonResponse;
-use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Http\Response;
 use Symfony\Component\HttpFoundation\Response as SymfonyResponse;
 use Webteractive\Passwordless\Contracts\MagicCodeStrategy;
 use Webteractive\Passwordless\Passwordless;
@@ -24,7 +21,7 @@ class ConsumeController
         AuthCompletion $completion,
         RememberFlag $flag,
         string $token,
-    ): JsonResponse|RedirectResponse|Response|SymfonyResponse {
+    ): SymfonyResponse {
         abort_unless((bool) config('passwordless.strategies.magic_code.enabled', false), 404);
 
         if (! $request->hasValidSignature()) {

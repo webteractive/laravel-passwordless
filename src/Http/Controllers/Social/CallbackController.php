@@ -2,8 +2,6 @@
 
 namespace Webteractive\Passwordless\Http\Controllers\Social;
 
-use Illuminate\Http\JsonResponse;
-use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Laravel\Socialite\Two\InvalidStateException;
 use Symfony\Component\HttpFoundation\Response as SymfonyResponse;
@@ -23,7 +21,7 @@ class CallbackController
         Passwordless $passwordless,
         AuthCompletion $completion,
         RememberFlag $flag,
-    ): JsonResponse|RedirectResponse|SymfonyResponse {
+    ): SymfonyResponse {
         try {
             $user = $strategy->callback($provider, $request);
         } catch (SocialProviderNotEnabledException) {

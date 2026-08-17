@@ -74,7 +74,9 @@ These are PRD decisions made during planning. Do not relitigate without explicit
 
 Pest under `tests/`. Workbench user models at `workbench/app/Models/User.php` (plain) and
 `TwoFactorUser.php` (same table, plus Fortify's `TwoFactorAuthenticatable`) — 2FA tests opt in by
-pointing **both** `passwordless.user_model` and `auth.providers.users.model` at the latter.
+pointing **both** `passwordless.user_model` and `auth.providers.users.model` at the latter. A third,
+`UuidUser.php`, has a uuid primary key and no `name` column, and exists to stop code assuming `id`
+and `name` exist on the user table.
 `TestCase::reloadPasswordlessRoutes()` re-registers the package route file against current config,
 which is how the dev-login registration guard is tested. Pest helper functions are **global**, so
 new helpers need unique names (several collisions were hit during development). The TestCase boots the package provider and runs every `database/migrations/*.php.stub` plus `tests/database/migrations/*.php` — add new package migrations as `*.php.stub` files only.

@@ -2,10 +2,7 @@
 
 namespace Webteractive\Passwordless\Http\Controllers\DevLogin;
 
-use Illuminate\Http\JsonResponse;
-use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Http\Response;
 use Symfony\Component\HttpFoundation\Response as SymfonyResponse;
 use Webteractive\Passwordless\Events\UserAuthenticated;
 use Webteractive\Passwordless\Passwordless;
@@ -23,7 +20,7 @@ class StoreController
         AuthCompletion $completion,
         RememberFlag $flag,
         Passwordless $passwordless,
-    ): JsonResponse|RedirectResponse|Response|SymfonyResponse {
+    ): SymfonyResponse {
         $request->validate([
             'user' => ['required'],
             'remember' => ['nullable', 'boolean'],

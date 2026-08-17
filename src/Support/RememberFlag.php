@@ -5,7 +5,8 @@ namespace Webteractive\Passwordless\Support;
 use Illuminate\Http\Request;
 
 /**
- * Single owner of the remember-me flag.
+ * Single owner of the remember-me flag — resolution rules live here, not spread
+ * across controllers.
  *
  * The flag is chosen at send time (a checkbox on the email form) but consumed in
  * a later request for magic links, so it travels in challenge metadata. The
@@ -58,6 +59,20 @@ class RememberFlag
         }
 
         return (bool) ($metadata['remember'] ?? false);
+    }
+
+    /**
+     * Resolve for a verify request, where an explicit `remember` key on THIS
+     * request outranks whatever was stored when the code was sent — it is the
+     * user's most recent expressed intent, in their own session.
+     */
+    public function resolveForVerify(Request $request): bool
+    {
+        if ($request->has('remember')) {
+            return $this->enabled() && $request->boolean('remember');
+        }
+
+        return $this->resolve($request);
     }
 
     /**

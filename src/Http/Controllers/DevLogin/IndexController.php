@@ -4,6 +4,7 @@ namespace Webteractive\Passwordless\Http\Controllers\DevLogin;
 
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Schema;
 
 /**
  * Lists users for the development-only picker. Reachable only when the
@@ -17,6 +18,17 @@ class IndexController
         $column = config('passwordless.user_email_column', 'email');
         $limit = (int) config('passwordless.dev_login.limit', 50);
 
+        $instance = new $model;
+
+        // Read the key from the model rather than assuming `id`, so apps with a
+        // uuid/ulid primary key still get a working picker. `name` is optional
+        // for the same reason — not every user table has one.
+        $columns = [$instance->getKeyName(), $column];
+
+        if (Schema::hasColumn($instance->getTable(), 'name')) {
+            $columns[] = 'name';
+        }
+
         $query = $model::query()->orderBy($column);
 
         if ($q = $request->query('q')) {
@@ -25,7 +37,7 @@ class IndexController
 
         // Select only what a picker needs — never password hashes, remember
         // tokens, or two-factor secrets.
-        $users = $query->limit($limit)->get(['id', 'name', $column])
+        $users = $query->limit($limit)->get(array_unique($columns))
             ->map(fn ($user) => [
                 'id' => $user->getKey(),
                 'name' => $user->name,

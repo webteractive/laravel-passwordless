@@ -58,6 +58,32 @@ it('forces false everywhere when disabled', function () {
     expect($flag->fromContext(['remember' => true]))->toBeFalse();
 });
 
+it('lets an explicit verify-request key outrank the stashed value', function () {
+    $flag = new RememberFlag;
+    $request = Request::create('/', 'POST', ['remember' => '0']);
+    $flag->stash($request, true);
+
+    // resolve() prefers the stash; resolveForVerify() prefers this request.
+    expect($flag->resolve($request))->toBeTrue();
+    expect($flag->resolveForVerify($request))->toBeFalse();
+});
+
+it('falls back to the stashed value when the verify request says nothing', function () {
+    $flag = new RememberFlag;
+    $request = Request::create('/', 'POST');
+    $flag->stash($request, true);
+
+    expect($flag->resolveForVerify($request))->toBeTrue();
+});
+
+it('forces verify resolution to false when disabled', function () {
+    config()->set('passwordless.remember.enabled', false);
+
+    $request = Request::create('/', 'POST', ['remember' => '1']);
+
+    expect((new RememberFlag)->resolveForVerify($request))->toBeFalse();
+});
+
 it('reads a remember flag out of a strategy context array', function () {
     expect((new RememberFlag)->fromContext(['remember' => true]))->toBeTrue();
     expect((new RememberFlag)->fromContext([]))->toBeFalse();

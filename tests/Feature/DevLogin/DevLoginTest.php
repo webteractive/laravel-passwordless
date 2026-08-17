@@ -1,9 +1,11 @@
 <?php
 
 use Illuminate\Support\Facades\Event;
+use Illuminate\Support\Str;
 use Webteractive\Passwordless\Events\UserAuthenticated;
 use Workbench\App\Models\TwoFactorUser;
 use Workbench\App\Models\User;
+use Workbench\App\Models\UuidUser;
 
 beforeEach(function () {
     config()->set('passwordless.dev_login.enabled', true);
@@ -30,6 +32,36 @@ it('never exposes sensitive columns', function () {
     expect($response->json('users.0'))->not->toHaveKey('password');
     expect($response->json('users.0'))->not->toHaveKey('remember_token');
     expect($response->json('users.0'))->not->toHaveKey('two_factor_secret');
+});
+
+/**
+ * Guards the two assumptions a user table is most likely to break: that the
+ * primary key is called `id`, and that a `name` column exists. Selecting either
+ * blindly is a hard SQL error, not a graceful degradation.
+ */
+it('works for a model with a uuid key and no name column', function () {
+    config()->set('passwordless.user_model', UuidUser::class);
+
+    $user = UuidUser::create(['uuid' => (string) Str::uuid(), 'email' => 'uuid@example.com']);
+
+    $response = $this->getJson('/auth/dev-login')->assertOk();
+
+    expect($response->json('users'))->toHaveCount(1);
+    expect($response->json('users.0.id'))->toBe($user->getKey());
+    expect($response->json('users.0.email'))->toBe('uuid@example.com');
+    expect($response->json('users.0.name'))->toBeNull();
+});
+
+it('signs in a uuid-keyed user from the picker', function () {
+    config()->set('passwordless.user_model', UuidUser::class);
+    config()->set('auth.providers.users.model', UuidUser::class);
+
+    $user = UuidUser::create(['uuid' => (string) Str::uuid(), 'email' => 'uuid2@example.com']);
+
+    $this->postJson('/auth/dev-login', ['user' => $user->getKey()])->assertNoContent();
+
+    expect(auth()->check())->toBeTrue();
+    expect(auth()->id())->toBe($user->getKey());
 });
 
 it('caps the list at the configured limit', function () {

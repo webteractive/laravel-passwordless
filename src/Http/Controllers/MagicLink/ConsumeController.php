@@ -2,9 +2,7 @@
 
 namespace Webteractive\Passwordless\Http\Controllers\MagicLink;
 
-use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Http\Response;
 use Symfony\Component\HttpFoundation\Response as SymfonyResponse;
 use Webteractive\Passwordless\Contracts\MagicLinkStrategy;
 use Webteractive\Passwordless\Strategies\MagicLink\MagicLinkDifferentBrowserException;
@@ -21,7 +19,7 @@ class ConsumeController
         AuthCompletion $completion,
         RememberFlag $flag,
         string $token,
-    ): JsonResponse|Response|SymfonyResponse {
+    ): SymfonyResponse {
         if (! $request->hasValidSignature()) {
             return response()->json(['message' => __('passwordless::passwordless.invalid_or_expired')], 401);
         }
