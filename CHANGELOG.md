@@ -2,7 +2,7 @@
 
 All notable changes to `laravel-passwordless` will be documented in this file.
 
-## Unreleased
+## 0.1.4 - 2026-08-17
 
 ### Added
 
