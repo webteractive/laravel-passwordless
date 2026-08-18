@@ -79,7 +79,16 @@ pointing **both** `passwordless.user_model` and `auth.providers.users.model` at 
 and `name` exist on the user table.
 `TestCase::reloadPasswordlessRoutes()` re-registers the package route file against current config,
 which is how the dev-login registration guard is tested. Pest helper functions are **global**, so
-new helpers need unique names (several collisions were hit during development). The TestCase boots the package provider and runs every `database/migrations/*.php.stub` plus `tests/database/migrations/*.php` — add new package migrations as `*.php.stub` files only.
+new helpers need unique names (several collisions were hit during development). The TestCase boots the package provider and runs every `database/migrations/*.php.stub` plus `tests/database/migrations/*.php` — add new package migrations as `*.php.stub` files only. Stubs run in `glob()` filename order, so an `alter`/`widen` stub must sort **after** the `create_*` it depends on.
+
+**The suite only ever runs SQLite — including the CI legs named `mysql` and `pgsql`.**
+`TestCase::getEnvironmentSetUp()` hardcodes `database.default => 'testing'`, which Testbench pins to
+sqlite `:memory:`, so the `DB_*` environment those legs set is ignored. Driver-specific schema
+behaviour (varchar widths, strict-mode rejection, index length limits) therefore **cannot fail
+CI** — that is how the v0.1.5 `avatar` `varchar(255)` overflow reached production. Do not read a
+green suite as evidence that MySQL is happy. Fixing it is not a one-liner; see
+`docs/superpowers/specs/2026-08-18-test-driver-coverage-design.md` (untracked, `/docs` is
+gitignored).
 
 ## Extension surface
 
