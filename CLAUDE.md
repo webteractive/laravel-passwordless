@@ -81,14 +81,24 @@ and `name` exist on the user table.
 which is how the dev-login registration guard is tested. Pest helper functions are **global**, so
 new helpers need unique names (several collisions were hit during development). The TestCase boots the package provider and runs every `database/migrations/*.php.stub` plus `tests/database/migrations/*.php` — add new package migrations as `*.php.stub` files only. Stubs run in `glob()` filename order, so an `alter`/`widen` stub must sort **after** the `create_*` it depends on.
 
-**The suite only ever runs SQLite — including the CI legs named `mysql` and `pgsql`.**
-`TestCase::getEnvironmentSetUp()` hardcodes `database.default => 'testing'`, which Testbench pins to
-sqlite `:memory:`, so the `DB_*` environment those legs set is ignored. Driver-specific schema
-behaviour (varchar widths, strict-mode rejection, index length limits) therefore **cannot fail
-CI** — that is how the v0.1.5 `avatar` `varchar(255)` overflow reached production. Do not read a
-green suite as evidence that MySQL is happy. Fixing it is not a one-liner; see
-`docs/superpowers/specs/2026-08-18-test-driver-coverage-design.md` (untracked, `/docs` is
-gitignored).
+**The suite only ever runs SQLite.** `TestCase::getEnvironmentSetUp()` hardcodes
+`database.default => 'testing'`, which Testbench pins to sqlite `:memory:`. Driver-specific schema
+behaviour (varchar widths, strict-mode rejection, index length limits, constraint naming) therefore
+**cannot fail CI** — that is how the v0.1.5 `avatar` `varchar(255)` overflow reached production.
+Do not read a green suite as evidence that MySQL is happy.
+
+CI used to carry `mysql` and `pgsql` matrix legs that *also* ran SQLite — the hardcoded connection
+meant their `DB_*` environment was ignored, so they asserted coverage they did not have. They were
+removed on 2026-08-18 rather than repaired: the schema is two stable tables and the width bug is
+structurally closed, so the honest cheap fix beat the speculative expensive one. Restoring real
+driver coverage is designed out in
+`docs/superpowers/specs/2026-08-18-test-driver-coverage-design.md` (untracked — `/docs` is
+gitignored) and is **not** a one-line change; read it before re-adding a leg.
+
+Where a driver difference could fail *silently*, pin the compiled SQL instead — see
+`tests/Feature/MagicCode/SiblingQueryGrammarTest.php`, which asserts the JSON-path lookup behind
+magicCode's "first one used wins" rule still compiles to a JSON extraction on all three drivers.
+`toSql()` compiles through a driver's grammar without opening a connection, so this needs no server.
 
 ## Extension surface
 
