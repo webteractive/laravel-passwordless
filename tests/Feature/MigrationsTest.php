@@ -69,3 +69,30 @@ it('skips widening when the social table is absent', function () {
 
     expect(Schema::hasTable('passwordless_social_accounts'))->toBeFalse();
 });
+
+/**
+ * The two tables deliberately differ on foreign keys, and the difference is easy
+ * to "tidy up" into a bug.
+ *
+ * `passwordless_challenges.user_id` carries NO constraint on purpose: the user
+ * model is configurable via `passwordless.user_model`, so the table cannot assume
+ * the referenced table is named `users` or that its key is a bigint (the suite
+ * ships `UuidUser` precisely to keep that honest). Challenge rows are ephemeral and
+ * `passwordless:prune` collects them, so nothing is orphaned for long.
+ *
+ * `passwordless_social_accounts` does use `->constrained()`, which means the social
+ * strategy — and only the social strategy — requires a `users` table with a bigint
+ * key.
+ *
+ * Adding `->constrained()` to challenges would break every app with a renamed or
+ * non-bigint user table, so this pins the asymmetry rather than leaving it to
+ * whoever notices it next.
+ */
+it('leaves challenges unconstrained while social accounts is constrained', function () {
+    $foreignKeys = fn (string $table) => collect(Schema::getForeignKeys($table));
+
+    expect($foreignKeys('passwordless_challenges'))->toBeEmpty();
+
+    expect($foreignKeys('passwordless_social_accounts')->pluck('foreign_table'))
+        ->toContain('users');
+});
