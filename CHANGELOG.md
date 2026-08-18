@@ -2,6 +2,21 @@
 
 All notable changes to `laravel-passwordless` will be documented in this file.
 
+## 0.1.5 - 2026-08-18
+
+### Fixed
+
+- **`passwordless_social_accounts.avatar` is now `text`, not `string`.** Google's signed avatar URLs (`lh3.googleusercontent.com/a-/ALV-Uj…=s96-c`) run to roughly 1,200 characters, which overflowed the `varchar(255)`; MySQL answered with a `1406 Data too long` that failed the entire social sign-in, not just the avatar. SQLite does not enforce varchar length, so this only ever surfaced in production.
+
+  **Existing installs need to act.** Changing the create migration only helps fresh installs — an app that already published and ran it keeps its `varchar(255)`. A new `widen_passwordless_social_accounts_avatar` migration ships alongside it:
+
+  ```bash
+  php artisan vendor:publish --tag=passwordless-migrations
+  php artisan migrate
+  ```
+
+  Publishing adds only the new migration; the two you already published are skipped, keeping their original filenames and timestamps. On a fresh install both publish and the widening is a harmless no-op.
+
 ## 0.1.4 - 2026-08-17
 
 ### Added

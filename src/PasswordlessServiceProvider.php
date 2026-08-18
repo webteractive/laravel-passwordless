@@ -22,9 +22,13 @@ class PasswordlessServiceProvider extends PackageServiceProvider
         $package
             ->name('passwordless')
             ->hasConfigFile()
+            // Order matters: each entry is published with a timestamp one second
+            // after the previous, so an ALTER must be listed after the CREATE it
+            // depends on. Already-published files keep their original filename.
             ->hasMigrations([
                 'create_passwordless_challenges_table',
                 'create_passwordless_social_accounts_table',
+                'widen_passwordless_social_accounts_avatar',
             ])
             ->hasRoute('web')
             ->hasRoute('api')

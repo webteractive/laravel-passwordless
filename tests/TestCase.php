@@ -77,6 +77,9 @@ class TestCase extends Orchestra
     {
         $this->loadMigrationsFrom(__DIR__.'/database/migrations');
 
+        // glob() sorts, so stubs run in filename order — an ALTER stub has to
+        // sort after the CREATE it depends on (as `widen_*` does after
+        // `create_*`). Mirrors the order declared in the service provider.
         foreach (glob(__DIR__.'/../database/migrations/*.php.stub') as $stub) {
             (require $stub)->up();
         }

@@ -72,6 +72,10 @@ php artisan vendor:publish --tag="passwordless-migrations"
 php artisan migrate
 ```
 
+Re-run both after upgrading the package — releases occasionally add a migration, and
+publishing skips every file you already have rather than duplicating or re-timestamping
+it. See the [changelog](CHANGELOG.md) for which releases need this (0.1.5 does).
+
 Publish the config (optional — sensible defaults ship built-in):
 
 ```bash
